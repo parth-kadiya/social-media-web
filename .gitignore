@@ -1,0 +1,11 @@
+# Server specific
+server/node_modules
+server/.env
+
+# Client specific
+client/node_modules
+client/.env
+client/build
+
+# OS specific
+.DS_Store
