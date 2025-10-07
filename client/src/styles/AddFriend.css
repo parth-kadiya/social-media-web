@@ -1,0 +1,46 @@
+.users-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.user-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border: 1px solid #dbdbdb;
+  border-radius: 8px;
+  background-color: #fff;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.user-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.user-info .user-name {
+  display: block;
+  font-weight: 600;
+}
+
+.user-info .user-username {
+  color: #8e8e8e;
+  font-size: 0.9rem;
+}
+
+.add-button {
+  padding: 8px 16px;
+  border: none;
+  background-color: #667eea;
+  color: white;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-button:hover {
+  background-color: #5a6fd5;
+}

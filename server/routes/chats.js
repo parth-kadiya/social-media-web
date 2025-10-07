@@ -1,4 +1,5 @@
 // server/routes/chats.js
+
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
@@ -6,7 +7,7 @@ const User = require('../models/User');
 const Message = require('../models/Message');
 const mongoose = require('mongoose');
 
-// Helper: check friendship (ensure friendId is in my friends array)
+// Helper: check friendship
 async function ensureFriends(meId, friendId) {
   if (!mongoose.Types.ObjectId.isValid(friendId)) return false;
   const me = await User.findById(meId).select('friends');
@@ -14,23 +15,15 @@ async function ensureFriends(meId, friendId) {
   return me.friends.map(f => f.toString()).includes(friendId.toString());
 }
 
-/**
- * GET /api/chats/list
- * Returns my friends (populated basic info) with unreadCount for each friend
- * Response: [ { _id, firstName, lastName, username, unreadCount, lastMessageSnippet, lastMessageAt } ]
- */
+// GET /api/chats/list (No changes here, same as before)
 router.get('/list', auth, async (req, res) => {
   try {
     const me = await User.findById(req.userId).populate('friends', 'firstName lastName username').select('friends');
     if (!me) return res.status(404).json({ message: 'User not found' });
 
-    // map friends
     const friends = me.friends || [];
-
-    // For performance, we'll fetch unread counts in parallel
     const results = await Promise.all(friends.map(async friend => {
       const unreadCount = await Message.countDocuments({ from: friend._id, to: req.userId, read: false });
-      // last message between pair (optional snippet)
       const lastMsg = await Message.findOne({
         $or: [
           { from: req.userId, to: friend._id },
@@ -48,7 +41,6 @@ router.get('/list', auth, async (req, res) => {
       };
     }));
 
-    // sort by lastMessageAt desc (optional)
     results.sort((a,b) => {
       if (!a.lastMessageAt && !b.lastMessageAt) return 0;
       if (!a.lastMessageAt) return 1;
@@ -63,11 +55,7 @@ router.get('/list', auth, async (req, res) => {
   }
 });
 
-/**
- * GET /api/chats/:friendId/messages
- * Returns all messages between me and friend sorted asc by createdAt.
- * Also marks messages FROM friend TO me as read = true.
- */
+// GET /api/chats/:friendId/messages (*** YAHAN BADLAV HUA HAI ***)
 router.get('/:friendId/messages', auth, async (req, res) => {
   try {
     const friendId = req.params.friendId;
@@ -75,9 +63,19 @@ router.get('/:friendId/messages', auth, async (req, res) => {
       return res.status(403).json({ message: 'You can only fetch chats with your friends' });
     }
 
-    // mark unread from friend -> me as read
+    // 1. Pehla unread message dhoondhein
+    const firstUnread = await Message.findOne({
+        from: friendId,
+        to: req.userId,
+        read: false
+    }).sort({ createdAt: 1 });
+
+    const firstUnreadId = firstUnread ? firstUnread._id : null;
+
+    // 2. Saare unread messages ko read mark karein
     await Message.updateMany({ from: friendId, to: req.userId, read: false }, { $set: { read: true } });
 
+    // 3. Saare messages fetch karein
     const msgs = await Message.find({
       $or: [
         { from: req.userId, to: friendId },
@@ -85,18 +83,16 @@ router.get('/:friendId/messages', auth, async (req, res) => {
       ]
     }).sort({ createdAt: 1 }).lean();
 
-    res.json(msgs);
+    // 4. Messages ke saath firstUnreadId bhi bhejein
+    res.json({ messages: msgs, firstUnreadId: firstUnreadId });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-/**
- * POST /api/chats/:friendId/message
- * Body: { text }
- * Send a message to friend (only if friend). Returns saved message.
- */
+// POST /api/chats/:friendId/message (No changes here, same as before)
 router.post('/:friendId/message', auth, async (req, res) => {
   try {
     const friendId = req.params.friendId;
@@ -117,7 +113,6 @@ router.post('/:friendId/message', auth, async (req, res) => {
     });
     await msg.save();
 
-    // return populated minimal object
     const populated = await Message.findById(msg._id).lean();
     res.json(populated);
   } catch (err) {

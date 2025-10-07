@@ -1,0 +1,48 @@
+.requests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+.request-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border: 1px solid #dbdbdb;
+  border-radius: 8px;
+  background-color: #fff;
+}
+.request-info .request-name {
+  display: block;
+  font-weight: 600;
+}
+.request-info .request-username {
+  color: #8e8e8e;
+  font-size: 0.9rem;
+}
+.request-actions {
+  display: flex;
+  gap: 10px;
+}
+.action-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.action-btn.accept {
+  background-color: #28a745;
+  color: white;
+}
+.action-btn.reject {
+  background-color: #f0f2f5;
+  color: #262626;
+}

@@ -1,0 +1,120 @@
+/* Post.css */
+@keyframes scaleFade {
+  0% { transform: scale(0.6); opacity: 0.0; }
+  30% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+.post-card {
+  background: #fff;
+  border: 1px solid #dbdbdb;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  width: 100%;
+  max-width: 500px;
+}
+
+.post-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+}
+
+.post-user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.post-user-name {
+  font-weight: 600;
+  color: #262626;
+}
+
+.post-user-username {
+  font-size: 0.85rem;
+  color: #8e8e8e;
+}
+
+.post-timestamp {
+    font-size: 0.8rem;
+    color: #8e8e8e;
+}
+
+.post-image-wrapper {
+  position: relative;
+  width: 100%;
+  background-color: #fafafa;
+}
+
+.post-image {
+  width: 100%;
+  display: block;
+  user-select: none;
+  object-fit: cover;
+  aspect-ratio: 1 / 1; /* For square images */
+}
+
+.post-like-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  animation: scaleFade 700ms ease-out;
+}
+
+.double-tap-heart {
+    font-size: 100px;
+    color: rgba(255, 255, 255, 0.9);
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+}
+
+.post-actions {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  gap: 16px;
+}
+
+.action-button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #262626;
+  padding: 6px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.action-button:hover {
+    background-color: #f0f0f0;
+}
+
+.action-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.like-button svg {
+  font-size: 1.5rem;
+  transition: transform 0.2s ease-in-out;
+}
+.like-button:hover svg {
+    transform: scale(1.1);
+}
+
+.icon-liked {
+    color: #ed4956;
+}
+
+.delete-button {
+    margin-left: auto;
+    color: #ed4956;
+}

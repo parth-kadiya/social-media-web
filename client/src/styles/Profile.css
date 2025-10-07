@@ -1,0 +1,81 @@
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+.form-row {
+  display: flex;
+  gap: 20px;
+}
+.form-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.form-group label {
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #555;
+}
+.form-group input {
+  padding: 12px 15px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+.btn-primary, .btn-secondary, .btn-danger {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 1rem;
+}
+.btn-primary {
+  background-color: #667eea;
+  color: white;
+}
+.btn-secondary {
+  background-color: #f0f2f5;
+  color: #262626;
+}
+.danger-zone {
+  margin-top: 40px;
+  border-top: 1px solid #dbdbdb;
+  padding-top: 24px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.danger-zone-title {
+  color: #ed4956;
+  margin-bottom: 8px;
+}
+.danger-zone-content {
+  border: 1px solid #ed4956;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.danger-zone-content p {
+  margin: 0;
+  color: #555;
+}
+.btn-danger {
+  background-color: #ed4956;
+  color: white;
+}
+@media(max-width: 500px) {
+    .form-row, .danger-zone-content {
+        flex-direction: column;
+    }
+}
