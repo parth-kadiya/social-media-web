@@ -121,7 +121,7 @@ export default function MainLayout() {
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
         // Agar user upar scroll kar raha hai, to kuch na karein. Uski position bani rahegi.
-    }, 1000); // 300ms ka timeout kaafi hona chahiye.
+    }, 50); // 50ms ka timeout kaafi hona chahiye.
 
     return () => clearTimeout(scrollTimeout); // Cleanup
 }, [chatMessages]);
