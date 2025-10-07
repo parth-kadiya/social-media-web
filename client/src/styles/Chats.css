@@ -78,6 +78,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex-direction: column-reverse !important; /* Naye messages ko neeche rakhega */
+  overflow-anchor: auto !important; /* Scroll position ko stable rakhega */
 }
 .message-bubble-wrapper { display: flex; }
 .message-bubble-wrapper.sent { justify-content: flex-end; }

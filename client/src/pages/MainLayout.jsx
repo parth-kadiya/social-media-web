@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useLayoutEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import Sidebar from '../components/Sidebar';
@@ -76,56 +76,6 @@ export default function MainLayout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // =================================================================
-  // === FINAL UPDATED SMART SCROLLING LOGIC ===
-  // =================================================================
-  useEffect(() => {
-    const chatContainer = chatContainerRef.current;
-    if (!chatContainer) return;
-
-    // Is logic ko ek timeout me daal rahe hain taaki saare messages DOM me render ho jayein
-    // aur scrollHeight sahi calculate ho.
-    const scrollTimeout = setTimeout(() => {
-        // Case 1: Chat pehli baar load ho rahi hai (jab user friend par click karta hai).
-        if (isInitialLoadForChat.current) {
-            isInitialLoadForChat.current = false; // Flag ko turant reset karein.
-
-            // Sub-case 1.1: Agar unread message hai, to wahan scroll karein.
-            if (firstUnreadMsgId.current) {
-                const unreadElement = document.querySelector(`[data-message-id="${firstUnreadMsgId.current}"]`);
-                if (unreadElement) {
-                    // 'auto' behavior turant scroll karta hai, jo chat open hone par accha lagta hai.
-                    unreadElement.scrollIntoView({ behavior: 'auto', block: 'center' });
-                    firstUnreadMsgId.current = null; // ID ko reset karein.
-                    return; // Initial scroll ho gaya, ab aage kuch nahi karna.
-                }
-            }
-            
-            // Sub-case 1.2: Agar koi unread message nahi hai, to seedha bottom me scroll karein.
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-            return;
-        }
-
-        // Case 2: User ne naya message bheja hai. Hamesha bottom me scroll karein.
-        if (isSendingMessage.current) {
-            isSendingMessage.current = false; // Flag ko reset karein.
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-            return;
-        }
-        
-        // Case 3: Polling se naya message aaya hai.
-        // Check karein ki user pehle se hi neeche hai ya nahi.
-        // Buffer thoda badha diya hai (150px) to be safe.
-        const isScrolledToBottom = chatContainer.scrollHeight - chatContainer.clientHeight <= chatContainer.scrollTop + 150;
-        if (isScrolledToBottom) {
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
-        // Agar user upar scroll kar raha hai, to kuch na karein. Uski position bani rahegi.
-    }, 50); // 50ms ka timeout kaafi hona chahiye.
-
-    return () => clearTimeout(scrollTimeout); // Cleanup
-}, [chatMessages]);
-  // =================================================================
 
   function setMsgFor(viewName, text, autoClearMs = 4000) {
     setMsgs(prev => ({ ...prev, [viewName]: text }));
@@ -352,35 +302,35 @@ export default function MainLayout() {
   async function openChat(friend) {
     if (!friend || !friend._id) return;
     setActiveChatFriend(friend);
-    setChatMessages([]);
-    firstUnreadMsgId.current = null;
+    setChatMessages([]); 
+    // firstUnreadMsgId.current = null; // Iski ab zaroorat nahi, hata sakte hain
     try {
-      // YAHAN BADLAV: Initial load ka flag set karein
       isInitialLoadForChat.current = true;
       const res = await api.get(`/chats/${friend._id}/messages`);
-      const { messages, firstUnreadId } = res.data;
-      if (firstUnreadId) {
-        firstUnreadMsgId.current = firstUnreadId;
-      }
-      setChatMessages(messages || []);
+      const { messages } = res.data;
       
+      // === BAS YAHAN BADLAV KARNA HAI ===
+      // Pehle: setChatMessages(messages || []);
+      // Ab:
+      setChatMessages((messages || []).slice().reverse()); // Array ko reverse karke set karein
+
       await loadChatsList();
 
       if (chatPollingRef.current) clearInterval(chatPollingRef.current);
       chatPollingRef.current = setInterval(async () => {
         try {
           const r = await api.get(`/chats/${friend._id}/messages`);
-          // Sirf tabhi messages update karein jab server se naye messages aaye ho.
-          if (r.data?.messages?.length > chatMessages.length) {
-            setChatMessages(r.data.messages);
+          if (r.data?.messages?.length !== chatMessages.length) { // Condition ko thoda better kiya
+            // === AUR YAHAN BHI REVERSE KAREIN ===
+            setChatMessages((r.data.messages || []).slice().reverse());
           }
           await loadChatsList();
         } catch (e) { /* ignore */ }
-      }, 3000); // Polling interval thoda badha diya
+      }, 3000);
     } catch (err) {
       setMsgFor('chats', err.response?.data?.message || 'Failed to load chat');
     }
-  }
+}
   
   async function sendChatMessage(e) {
     e && e.preventDefault && e.preventDefault();
@@ -388,18 +338,22 @@ export default function MainLayout() {
     const text = (chatInput || '').trim();
     if (!text) return;
     
-    // YAHAN BADLAV: Message bhejne ka flag set karein
-    isSendingMessage.current = true;
+    // isSendingMessage.current = true; // Iski ab zaroorat nahi
     try {
       const res = await api.post(`/chats/${activeChatFriend._id}/message`, { text });
-      setChatMessages(prev => ([...prev, res.data]));
+      
+      // === YAHAN BADLAV KAREIN ===
+      // Pehle: setChatMessages(prev => ([...prev, res.data]));
+      // Ab:
+      setChatMessages(prev => ([res.data, ...prev])); // Naye message ko array ke START me add karein
+
       setChatInput('');
       await loadChatsList();
     } catch (err) {
-      isSendingMessage.current = false; // Error aane par flag reset karein
+      // isSendingMessage.current = false; // Iski ab zaroorat nahi
       setMsgFor('chats', err.response?.data?.message || 'Failed to send message');
     }
-  }
+}
 
   function stopChatPolling() {
     if (chatPollingRef.current) {
