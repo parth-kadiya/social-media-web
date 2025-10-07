@@ -76,6 +76,27 @@ export default function MainLayout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useLayoutEffect(() => {
+    // Agar firstUnreadMsgId me koi value hai, tabhi scroll logic chalao
+    if (firstUnreadMsgId.current) {
+      const unreadElement = document.querySelector(`[data-message-id="${firstUnreadMsgId.current}"]`);
+
+      if (unreadElement) {
+        // 'center' option se unread message screen ke beech me aayega
+        unreadElement.scrollIntoView({
+          behavior: 'auto', // Turant scroll
+          block: 'center'
+        });
+      }
+
+      // Kaam hone ke baad ref ko turant null kar do,
+      // taaki naye message aane par ye firse scroll na kare.
+      firstUnreadMsgId.current = null;
+    }
+    // Agar firstUnreadMsgId.current null hai, to ye effect kuch nahi karega
+    // aur CSS apna kaam karke chat ko bottom par rakhega.
+}, [chatMessages]);
+
 
   function setMsgFor(viewName, text, autoClearMs = 4000) {
     setMsgs(prev => ({ ...prev, [viewName]: text }));
@@ -302,27 +323,30 @@ export default function MainLayout() {
   async function openChat(friend) {
     if (!friend || !friend._id) return;
     setActiveChatFriend(friend);
-    setChatMessages([]); 
-    // firstUnreadMsgId.current = null; // Iski ab zaroorat nahi, hata sakte hain
+    setChatMessages([]);
+    firstUnreadMsgId.current = null; // Har baar chat open hone par pehle isko reset karein
+
     try {
-      isInitialLoadForChat.current = true;
       const res = await api.get(`/chats/${friend._id}/messages`);
-      const { messages } = res.data;
-      
-      // === BAS YAHAN BADLAV KARNA HAI ===
-      // Pehle: setChatMessages(messages || []);
-      // Ab:
-      setChatMessages((messages || []).slice().reverse()); // Array ko reverse karke set karein
+      const { messages, firstUnreadId } = res.data; // firstUnreadId ko yahan receive karein
+
+      // YEH LINE IMPORTANT HAI
+      if (firstUnreadId) {
+        firstUnreadMsgId.current = firstUnreadId; // Agar ID mili hai to ref me save karein
+      }
+
+      setChatMessages((messages || []).slice().reverse());
 
       await loadChatsList();
 
+      // Polling wala logic same rahega...
       if (chatPollingRef.current) clearInterval(chatPollingRef.current);
       chatPollingRef.current = setInterval(async () => {
         try {
           const r = await api.get(`/chats/${friend._id}/messages`);
-          if (r.data?.messages?.length !== chatMessages.length) { // Condition ko thoda better kiya
-            // === AUR YAHAN BHI REVERSE KAREIN ===
-            setChatMessages((r.data.messages || []).slice().reverse());
+          // Naye messages aane par reverse karke state update karein
+          if (chatMessages.length > 0 && r.data?.messages?.length !== chatMessages.length) {
+             setChatMessages((r.data.messages || []).slice().reverse());
           }
           await loadChatsList();
         } catch (e) { /* ignore */ }
