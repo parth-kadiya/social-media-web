@@ -9,3 +9,6 @@ client/build
 
 # OS specific
 .DS_Store
+
+# Ignore custom folder
+other/

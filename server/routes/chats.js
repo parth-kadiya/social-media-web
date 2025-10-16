@@ -1,5 +1,4 @@
 // server/routes/chats.js
-
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
@@ -7,7 +6,9 @@ const User = require('../models/User');
 const Message = require('../models/Message');
 const mongoose = require('mongoose');
 
-// Helper: check friendship
+/**
+ * Helper: check valid ObjectId and that 'friendId' is in user's friends list
+ */
 async function ensureFriends(meId, friendId) {
   if (!mongoose.Types.ObjectId.isValid(friendId)) return false;
   const me = await User.findById(meId).select('friends');
@@ -15,47 +16,39 @@ async function ensureFriends(meId, friendId) {
   return me.friends.map(f => f.toString()).includes(friendId.toString());
 }
 
-// GET /api/chats/list (No changes here, same as before)
+/**
+ * GET /api/chats/list
+ * Return list of friends with unread counts
+ */
 router.get('/list', auth, async (req, res) => {
   try {
     const me = await User.findById(req.userId).populate('friends', 'firstName lastName username').select('friends');
     if (!me) return res.status(404).json({ message: 'User not found' });
 
     const friends = me.friends || [];
+
     const results = await Promise.all(friends.map(async friend => {
       const unreadCount = await Message.countDocuments({ from: friend._id, to: req.userId, read: false });
-      const lastMsg = await Message.findOne({
-        $or: [
-          { from: req.userId, to: friend._id },
-          { from: friend._id, to: req.userId }
-        ]
-      }).sort({ createdAt: -1 }).lean();
       return {
         _id: friend._id,
         firstName: friend.firstName,
         lastName: friend.lastName,
         username: friend.username,
-        unreadCount,
-        lastMessageSnippet: lastMsg ? (lastMsg.text.length > 120 ? lastMsg.text.slice(0, 120) + '...' : lastMsg.text) : '',
-        lastMessageAt: lastMsg ? lastMsg.createdAt : null
+        unreadCount
       };
     }));
 
-    results.sort((a,b) => {
-      if (!a.lastMessageAt && !b.lastMessageAt) return 0;
-      if (!a.lastMessageAt) return 1;
-      if (!b.lastMessageAt) return -1;
-      return new Date(b.lastMessageAt) - new Date(a.lastMessageAt);
-    });
-
     res.json(results);
   } catch (err) {
-    console.error(err);
+    console.error('GET /api/chats/list error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// GET /api/chats/:friendId/messages (*** YAHAN BADLAV HUA HAI ***)
+/**
+ * GET /api/chats/:friendId/messages
+ * Fetch chat messages between current user and friend, mark incoming as read and return firstUnreadId
+ */
 router.get('/:friendId/messages', auth, async (req, res) => {
   try {
     const friendId = req.params.friendId;
@@ -63,36 +56,26 @@ router.get('/:friendId/messages', auth, async (req, res) => {
       return res.status(403).json({ message: 'You can only fetch chats with your friends' });
     }
 
-    // 1. Pehla unread message dhoondhein
-    const firstUnread = await Message.findOne({
-        from: friendId,
-        to: req.userId,
-        read: false
-    }).sort({ createdAt: 1 });
-
+    const firstUnread = await Message.findOne({ from: friendId, to: req.userId, read: false }).sort({ createdAt: 1 });
     const firstUnreadId = firstUnread ? firstUnread._id : null;
 
-    // 2. Saare unread messages ko read mark karein
     await Message.updateMany({ from: friendId, to: req.userId, read: false }, { $set: { read: true } });
 
-    // 3. Saare messages fetch karein
     const msgs = await Message.find({
-      $or: [
-        { from: req.userId, to: friendId },
-        { from: friendId, to: req.userId }
-      ]
+      $or: [{ from: req.userId, to: friendId }, { from: friendId, to: req.userId }]
     }).sort({ createdAt: 1 }).lean();
 
-    // 4. Messages ke saath firstUnreadId bhi bhejein
     res.json({ messages: msgs, firstUnreadId: firstUnreadId });
-
   } catch (err) {
-    console.error(err);
+    console.error('GET /api/chats/:friendId/messages error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// POST /api/chats/:friendId/message (No changes here, same as before)
+/**
+ * POST /api/chats/:friendId/message
+ * Save message to DB and emit to friend's connected sockets (if any)
+ */
 router.post('/:friendId/message', auth, async (req, res) => {
   try {
     const friendId = req.params.friendId;
@@ -113,10 +96,43 @@ router.post('/:friendId/message', auth, async (req, res) => {
     });
     await msg.save();
 
-    const populated = await Message.findById(msg._id).lean();
-    res.json(populated);
+    // Get a lean copy (no mongoose methods)
+    const populatedMsg = await Message.findById(msg._id).lean();
+
+    // Socket logic: emit to all sockets for the receiver (support Set / array / single id)
+    try {
+      const { io, userSocketMap } = req;
+      const receiverEntry = userSocketMap ? userSocketMap[friendId] : null;
+
+      if (receiverEntry) {
+        // If receiverEntry is a Set (recommended)
+        if (receiverEntry instanceof Set) {
+          for (const sid of Array.from(receiverEntry)) {
+            io.to(sid).emit('receive-message', populatedMsg);
+          }
+        } else if (Array.isArray(receiverEntry)) {
+          receiverEntry.forEach(sid => io.to(sid).emit('receive-message', populatedMsg));
+        } else if (typeof receiverEntry === 'string') {
+          io.to(receiverEntry).emit('receive-message', populatedMsg);
+        } else {
+          // fallback: try to iterate keys (object)
+          try {
+            for (const sid of Object.values(receiverEntry)) {
+              if (sid) io.to(sid).emit('receive-message', populatedMsg);
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+      }
+    } catch (emitErr) {
+      console.error('Error emitting message via sockets:', emitErr);
+      // do not fail the request; message saved to DB regardless
+    }
+
+    res.status(201).json(populatedMsg);
   } catch (err) {
-    console.error(err);
+    console.error('POST /api/chats/:friendId/message error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });

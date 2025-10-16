@@ -76,10 +76,8 @@
   padding: 20px;
   overflow-y: auto;
   display: flex;
-  flex-direction: column;
+  flex-direction: column; /* Isko 'column' rehne do (ya hata do, default yahi hai) */
   gap: 12px;
-  flex-direction: column-reverse !important; /* Naye messages ko neeche rakhega */
-  overflow-anchor: auto !important; /* Scroll position ko stable rakhega */
 }
 .message-bubble-wrapper { display: flex; }
 .message-bubble-wrapper.sent { justify-content: flex-end; }
