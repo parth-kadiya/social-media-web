@@ -207,20 +207,35 @@ useEffect(() => {
 
     // Priority 1: Agar koi specific unread message hai, to uspar jao.
     if (firstUnreadMsgId.current) {
-        const unreadElement = document.querySelector(`[data-message-id="${firstUnreadMsgId.current}"]`);
-        if (unreadElement) {
-            unreadElement.scrollIntoView({ behavior: 'auto', block: 'center' });
-        }
-        // Kaam hone ke baad ID ko reset kar do.
-        firstUnreadMsgId.current = null;
+      const unreadElement = document.querySelector(`[data-message-id="${firstUnreadMsgId.current}"]`);
+      if (unreadElement) {
+        unreadElement.scrollIntoView({ behavior: 'auto', block: 'center' });
+      }
+      // Kaam hone ke baad ID ko reset kar do.
+      firstUnreadMsgId.current = null;
     } 
     // Priority 2: Agar neeche scroll karne ka flag 'true' hai, to end tak scroll karo.
     else if (shouldScrollToBottom.current) {
-        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-        // Kaam hone ke baad flag ko reset kar do.
-        shouldScrollToBottom.current = false;
+      // YAHAN BADLAV KAREIN ==============================================
+
+      // PURANA CODE (isko comment ya delete kar dein):
+      // chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      
+      // NAYA CODE (isko add karein):
+      // Humne scroll logic ko setTimeout me daal diya hai taaki browser ko
+      // final height calculate karne ka poora time mil jaye.
+      setTimeout(() => {
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+      }, 0);
+
+      // ===================================================================
+
+      // Kaam hone ke baad flag ko reset kar do.
+      shouldScrollToBottom.current = false;
     }
-}, [chatMessages]);
+  }, [chatMessages]);
 
   // Chat Functions
   async function openChat(friend) {
