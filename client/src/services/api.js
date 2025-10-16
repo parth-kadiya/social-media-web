@@ -2,10 +2,12 @@
 
 import axios from 'axios';
 
-const apiURL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// Yahan se '/api' hata dein, agar default value me hai to.
+const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const api = axios.create({
-  baseURL: apiURL
+  // Ab baseURL me '/api' ko yahan jodein.
+  baseURL: `${baseURL}/api`
 });
 
 export default api;
