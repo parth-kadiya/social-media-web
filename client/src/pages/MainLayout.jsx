@@ -196,16 +196,11 @@ useEffect(() => {
     return () => clearInterval(chatListPollingRef.current);
   }, []);
 
-  useEffect(() => {
-    const count = chatList.filter(f => f.unreadCount > 0).length;
-    setUnreadSendersCount(count);
-}, [chatList]); // Jab bhi chatList badlegi, yeh chalega.
-
-  // Final Scrolling Logic
   useLayoutEffect(() => {
     if (!chatContainerRef.current) return;
 
     // Priority 1: Agar koi specific unread message hai, to uspar jao.
+    // ISKO BILKUL NAHI CHHEDNA HAI
     if (firstUnreadMsgId.current) {
       const unreadElement = document.querySelector(`[data-message-id="${firstUnreadMsgId.current}"]`);
       if (unreadElement) {
@@ -216,19 +211,34 @@ useEffect(() => {
     } 
     // Priority 2: Agar neeche scroll karne ka flag 'true' hai, to end tak scroll karo.
     else if (shouldScrollToBottom.current) {
+      
       // YAHAN BADLAV KAREIN ==============================================
 
       // PURANA CODE (isko comment ya delete kar dein):
-      // chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-      
-      // NAYA CODE (isko add karein):
-      // Humne scroll logic ko setTimeout me daal diya hai taaki browser ko
-      // final height calculate karne ka poora time mil jaye.
+      /*
       setTimeout(() => {
         if (chatContainerRef.current) {
           chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
       }, 0);
+      */
+
+      // NAYA "PERMANENT ILAJ" CODE (isko add karein):
+      // Hum browser ko bolenge ki woh aakhiri message element ko view me laaye.
+      // setTimeout(0) ab bhi zaroori hai taaki browser ko naya element
+      // render karne ka time mil jaaye.
+      setTimeout(() => {
+        if (chatContainerRef.current) {
+          // container ke andar aakhiri ".message-bubble-wrapper" ko dhoondho
+          const lastMessageElement = chatContainerRef.current.querySelector('.message-bubble-wrapper:last-child');
+          
+          if (lastMessageElement) {
+            // Aur browser ko bolo ki usse view me laaye.
+            // 'block: "end"' se woh bilkul bottom me align hoga.
+            lastMessageElement.scrollIntoView({ behavior: 'auto', block: 'end' });
+          }
+        }
+      }, 0); // 0ms delay ise agle 'tick' me bhej dega.
 
       // ===================================================================
 
