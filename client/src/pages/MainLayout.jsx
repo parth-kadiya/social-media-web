@@ -203,66 +203,39 @@ useEffect(() => {
 
   // Final Scrolling Logic
   useLayoutEffect(() => {
-  if (!chatContainerRef.current) return;
+    if (!chatContainerRef.current) return;
 
-  const container = chatContainerRef.current;
+    // Priority 1: Agar koi specific unread message hai, to uspar jao.
+    if (firstUnreadMsgId.current) {
+      const unreadElement = document.querySelector(`[data-message-id="${firstUnreadMsgId.current}"]`);
+      if (unreadElement) {
+        unreadElement.scrollIntoView({ behavior: 'auto', block: 'center' });
+      }
+      // Kaam hone ke baad ID ko reset kar do.
+      firstUnreadMsgId.current = null;
+    } 
+    // Priority 2: Agar neeche scroll karne ka flag 'true' hai, to end tak scroll karo.
+    else if (shouldScrollToBottom.current) {
+      // YAHAN BADLAV KAREIN ==============================================
 
-  // helper to scroll precisely to the last message
-  const scrollToBottom = (attempt = 0) => {
-    if (!container) return;
-
-    // Try to find the last message node (you already use data-message-id elsewhere)
-    const nodes = container.querySelectorAll('[data-message-id]');
-    const lastNode = nodes && nodes.length ? nodes[nodes.length - 1] : null;
-
-    if (lastNode) {
-      // Use double requestAnimationFrame to ensure layout/paint is done
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          try {
-            lastNode.scrollIntoView({ behavior: 'auto', block: 'end' });
-          } catch (e) {
-            // fallback
-            container.scrollTop = container.scrollHeight;
-          }
-        });
-      });
-    } else {
-      // No message nodes found — fallback to direct scroll
-      container.scrollTop = container.scrollHeight;
-    }
-
-    // If there is a late layout shift (images/fonts), retry a very small number of times
-    if (attempt < 2) {
-      // small delay to allow late layout change, then ensure we are at bottom
+      // PURANA CODE (isko comment ya delete kar dein):
+      // chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      
+      // NAYA CODE (isko add karein):
+      // Humne scroll logic ko setTimeout me daal diya hai taaki browser ko
+      // final height calculate karne ka poora time mil jaye.
       setTimeout(() => {
-        // if still not at absolute bottom, retry once more
-        if (container.scrollHeight - (container.scrollTop + container.clientHeight) > 2) {
-          scrollToBottom(attempt + 1);
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
-      }, 50);
-    }
-  };
+      }, 0);
 
-  // Priority 1: Specific unread message
-  if (firstUnreadMsgId.current) {
-    const unreadElement = document.querySelector(`[data-message-id="${firstUnreadMsgId.current}"]`);
-    if (unreadElement) {
-      unreadElement.scrollIntoView({ behavior: 'auto', block: 'center' });
-    }
-    firstUnreadMsgId.current = null;
-  }
-  // Priority 2: Scroll to bottom if requested
-  else if (shouldScrollToBottom.current) {
-    // call helper to precisely scroll to bottom
-    // use setTimeout 0 to ensure state has rendered at least once
-    setTimeout(() => {
-      scrollToBottom();
-      // reset flag after scrolling
+      // ===================================================================
+
+      // Kaam hone ke baad flag ko reset kar do.
       shouldScrollToBottom.current = false;
-    }, 0);
-  }
-}, [chatMessages]);
+    }
+  }, [chatMessages]);
 
   // Chat Functions
   async function openChat(friend) {
