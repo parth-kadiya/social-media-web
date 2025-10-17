@@ -196,56 +196,73 @@ useEffect(() => {
     return () => clearInterval(chatListPollingRef.current);
   }, []);
 
+  useEffect(() => {
+    const count = chatList.filter(f => f.unreadCount > 0).length;
+    setUnreadSendersCount(count);
+}, [chatList]); // Jab bhi chatList badlegi, yeh chalega.
+
+  // Final Scrolling Logic
   useLayoutEffect(() => {
-    if (!chatContainerRef.current) return;
+  if (!chatContainerRef.current) return;
 
-    // Priority 1: Agar koi specific unread message hai, to uspar jao.
-    // ISKO BILKUL NAHI CHHEDNA HAI
-    if (firstUnreadMsgId.current) {
-      const unreadElement = document.querySelector(`[data-message-id="${firstUnreadMsgId.current}"]`);
-      if (unreadElement) {
-        unreadElement.scrollIntoView({ behavior: 'auto', block: 'center' });
-      }
-      // Kaam hone ke baad ID ko reset kar do.
-      firstUnreadMsgId.current = null;
-    } 
-    // Priority 2: Agar neeche scroll karne ka flag 'true' hai, to end tak scroll karo.
-    else if (shouldScrollToBottom.current) {
-      
-      // YAHAN BADLAV KAREIN ==============================================
+  const container = chatContainerRef.current;
 
-      // PURANA CODE (isko comment ya delete kar dein):
-      /*
-      setTimeout(() => {
-        if (chatContainerRef.current) {
-          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-        }
-      }, 0);
-      */
+  // helper to scroll precisely to the last message
+  const scrollToBottom = (attempt = 0) => {
+    if (!container) return;
 
-      // NAYA "PERMANENT ILAJ" CODE (isko add karein):
-      // Hum browser ko bolenge ki woh aakhiri message element ko view me laaye.
-      // setTimeout(0) ab bhi zaroori hai taaki browser ko naya element
-      // render karne ka time mil jaaye.
-      setTimeout(() => {
-        if (chatContainerRef.current) {
-          // container ke andar aakhiri ".message-bubble-wrapper" ko dhoondho
-          const lastMessageElement = chatContainerRef.current.querySelector('.message-bubble-wrapper:last-child');
-          
-          if (lastMessageElement) {
-            // Aur browser ko bolo ki usse view me laaye.
-            // 'block: "end"' se woh bilkul bottom me align hoga.
-            lastMessageElement.scrollIntoView({ behavior: 'auto', block: 'end' });
+    // Try to find the last message node (you already use data-message-id elsewhere)
+    const nodes = container.querySelectorAll('[data-message-id]');
+    const lastNode = nodes && nodes.length ? nodes[nodes.length - 1] : null;
+
+    if (lastNode) {
+      // Use double requestAnimationFrame to ensure layout/paint is done
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          try {
+            lastNode.scrollIntoView({ behavior: 'auto', block: 'end' });
+          } catch (e) {
+            // fallback
+            container.scrollTop = container.scrollHeight;
           }
-        }
-      }, 0); // 0ms delay ise agle 'tick' me bhej dega.
-
-      // ===================================================================
-
-      // Kaam hone ke baad flag ko reset kar do.
-      shouldScrollToBottom.current = false;
+        });
+      });
+    } else {
+      // No message nodes found — fallback to direct scroll
+      container.scrollTop = container.scrollHeight;
     }
-  }, [chatMessages]);
+
+    // If there is a late layout shift (images/fonts), retry a very small number of times
+    if (attempt < 2) {
+      // small delay to allow late layout change, then ensure we are at bottom
+      setTimeout(() => {
+        // if still not at absolute bottom, retry once more
+        if (container.scrollHeight - (container.scrollTop + container.clientHeight) > 2) {
+          scrollToBottom(attempt + 1);
+        }
+      }, 50);
+    }
+  };
+
+  // Priority 1: Specific unread message
+  if (firstUnreadMsgId.current) {
+    const unreadElement = document.querySelector(`[data-message-id="${firstUnreadMsgId.current}"]`);
+    if (unreadElement) {
+      unreadElement.scrollIntoView({ behavior: 'auto', block: 'center' });
+    }
+    firstUnreadMsgId.current = null;
+  }
+  // Priority 2: Scroll to bottom if requested
+  else if (shouldScrollToBottom.current) {
+    // call helper to precisely scroll to bottom
+    // use setTimeout 0 to ensure state has rendered at least once
+    setTimeout(() => {
+      scrollToBottom();
+      // reset flag after scrolling
+      shouldScrollToBottom.current = false;
+    }, 0);
+  }
+}, [chatMessages]);
 
   // Chat Functions
   async function openChat(friend) {
