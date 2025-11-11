@@ -12,25 +12,25 @@ const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server, {
-  cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
-    methods: ["GET", "POST"]
-  }
+ cors: {
+  origin: process.env.CLIENT_URL || "http://localhost:3000",
+  methods: ["GET", "POST"]
+ }
 });
 
 // User ID aur Socket ID ko store karne ke liye
-const userSocketMap = {}; 
+const userSocketMap = {};
 
-initializeSocket(io, userSocketMap); 
+initializeSocket(io, userSocketMap);
 
 app.use(cors());
 app.use(express.json());
 
 // Middleware: Har request mein 'io' aur 'userSocketMap' ko attach karein
 app.use((req, res, next) => {
-  req.io = io;
-  req.userSocketMap = userSocketMap;
-  next();
+ req.io = io;
+ req.userSocketMap = userSocketMap;
+ next();
 });
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -40,14 +40,15 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/posts', require('./routes/posts'));
 app.use('/api/chats', require('./routes/chats'));
+app.use('/api/feedback', require('./routes/feedback')); 
 
 const PORT = process.env.PORT || 5000;
 mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => {
-    console.log('Mongo connected');
-    server.listen(PORT, () => {
-  console.log('Server running on', PORT);
-  console.log('Socket.io ready. allowed client origin:', process.env.CLIENT_URL || 'http://localhost:3000');
+ .then(() => {
+  console.log('Mongo connected');
+  server.listen(PORT, () => {
+ console.log('Server running on', PORT);
+ console.log('Socket.io ready. allowed client origin:', process.env.CLIENT_URL || 'http://localhost:3000');
 });
-  })
-  .catch(err => console.error(err));
+ })
+ .catch(err => console.error(err));

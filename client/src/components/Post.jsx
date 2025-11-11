@@ -1,4 +1,5 @@
 import React from 'react';
+import Avatar from './Avatar';
 import '../styles/Post.css';
 import { FaHeart, FaRegHeart, FaTrash } from 'react-icons/fa';
 
@@ -9,11 +10,14 @@ export default function Post({ p, showDelete, toggleLike, likeProcessing, handle
   return (
     <div className="post-card">
       <div className="post-header">
-        <div className="post-user-info">
-          <span className="post-user-name">{p.user?.firstName} {p.user?.lastName}</span>
-          <span className="post-user-username">@{p.user?.username}</span>
+        <div className="post-header-left"> {/* Group avatar and info */}
+            <Avatar src={p.user?.profilePictureUrl} alt={p.user?.firstName} size="small" />
+            <div className="post-user-info">
+              <span className="post-user-name">{p.user?.firstName} {p.user?.lastName}</span>
+              <span className="post-user-username">@{p.user?.username}</span>
+            </div>
         </div>
-        <span className="post-timestamp">{new Date(p.createdAt).toLocaleDateString()}</span>
+              <span className="post-timestamp">{new Date(p.createdAt).toLocaleDateString()}</span>
       </div>
 
       <div className="post-image-wrapper" onDoubleClick={() => handleDoubleLike(postId, liked)}>

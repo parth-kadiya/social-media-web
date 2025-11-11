@@ -1,17 +1,13 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import '../styles/Sidebar.css';
 import {
-  FaHome, FaUserPlus, FaUsers, FaComments, FaPlusSquare, FaNewspaper, FaBell, FaUserCircle, FaSignOutAlt
+ FaHome, FaUserPlus, FaUsers, FaComments, FaPlusSquare, FaNewspaper,
+  FaBell, FaUserCircle, FaSignOutAlt, FaCog 
 } from 'react-icons/fa';
+import Avatar from './Avatar';
 
-export default function Sidebar({ profile, logout, notif, unreadSendersCount, isSidebarOpen, setSidebarOpen }) {
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
+export default function Sidebar({ profile, notif, unreadSendersCount, isSidebarOpen, setSidebarOpen }) {
 
   return (
     <>
@@ -22,14 +18,18 @@ export default function Sidebar({ profile, logout, notif, unreadSendersCount, is
         </div>
         
         {profile && (
-          <div className="sidebar-profile">
-            <FaUserCircle size={40} className="profile-icon" />
-            <div className="profile-info">
-              <span className="profile-name">{profile.firstName} {profile.lastName}</span>
-              <span className="profile-username">@{profile.username}</span>
-            </div>
-          </div>
-        )}
+                    <div className="sidebar-profile">
+                        <Avatar 
+                src={profile.profilePictureUrl} 
+                alt={profile.firstName} 
+                size="medium" // Yeh 40px size dega
+            />
+                        <div className="profile-info">
+                            <span className="profile-name">{profile.firstName} {profile.lastName}</span>
+                            <span className="profile-username">@{profile.username}</span>
+                        </div>
+                    </div>
+                )}
 
         <nav className="sidebar-nav">
           <NavLink to="/home/feed" className="nav-item" onClick={() => setSidebarOpen(false)}>
@@ -59,13 +59,10 @@ export default function Sidebar({ profile, logout, notif, unreadSendersCount, is
           <NavLink to="/home/profile" className="nav-item" onClick={() => setSidebarOpen(false)}>
             <FaUserCircle className="nav-icon" /> Profile
           </NavLink>
+          <NavLink to="/home/settings" className="nav-item" onClick={() => setSidebarOpen(false)}>
+      <FaCog className="nav-icon" /> Settings
+     </NavLink>
         </nav>
-
-        <div className="sidebar-footer">
-          <button onClick={handleLogout} className="logout-button">
-            <FaSignOutAlt className="nav-icon" /> Logout
-          </button>
-        </div>
       </aside>
     </>
   );

@@ -12,6 +12,13 @@
   border-radius: 8px;
   background-color: #fff;
 }
+
+.friend-card-content {
+    display: flex;
+    align-items: center;
+    gap: 12px; /* Space between Avatar and text */
+}
+
 .friend-info .friend-name {
   display: block;
   font-weight: 600;

@@ -10,6 +10,7 @@ import CreatePost from './pages/CreatePost';
 import YourPosts from './pages/YourPosts';
 import FriendRequests from './pages/FriendRequests';
 import Profile from './pages/Profile';
+import Settings from './pages/Settings';
 import './setupAxios';
 import './App.css';
 
@@ -44,6 +45,7 @@ function App() {
           <Route path="your-posts" element={<YourPosts />} />
           <Route path="friend-requests" element={<FriendRequests />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
 
         {/* Fallback route */}

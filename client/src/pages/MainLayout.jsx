@@ -23,6 +23,7 @@ export default function MainLayout() {
   const [profile, setProfile] = useState(null);
   const [profileForm, setProfileForm] = useState({ firstName: '', lastName: '', mobile: '', email: '', username: '' });
   const [notif, setNotif] = useState({ newUsersCount: 0, friendRequestsCount: 0 });
+  const [isUploadingProfilePic, setIsUploadingProfilePic] = useState(false); 
 
   // Processing states
   const [processingRequestId, setProcessingRequestId] = useState(null);
@@ -35,6 +36,7 @@ export default function MainLayout() {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [unreadSendersCount, setUnreadSendersCount] = useState(0);
+  const [seenByFriendMap, setSeenByFriendMap] = useState({});
 
   // Refs
   const pollingRef = useRef(null);
@@ -48,6 +50,71 @@ export default function MainLayout() {
 
   // UI State
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+
+  async function uploadProfilePicture(imageFile) {
+        if (!imageFile) {
+             setMsgFor('profile', 'No image selected to upload.');
+             throw new Error('No image selected'); // Indicate failure
+        }
+        if (isUploadingProfilePic) return; // Prevent double clicks
+
+        setIsUploadingProfilePic(true);
+        setMsgFor('profile', 'Uploading picture...', null); // Show persistent loading message
+
+        const formData = new FormData();
+        // Backend expects 'profilePic' field name based on uploadProfilePic.single('profilePic')
+        formData.append('profilePic', imageFile, imageFile.name);
+
+        try {
+            // Call the new POST endpoint
+            const res = await api.post('/users/me/profile-picture', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            // Update profile state with the full user object returned from backend
+            const updatedUser = res.data.user;
+            setProfile(updatedUser);
+            localStorage.setItem('user', JSON.stringify(updatedUser)); // Update local storage too
+            setMsgFor('profile', 'Profile picture updated successfully!');
+
+        } catch (err) {
+            console.error("Upload error in MainLayout:", err);
+            const errorMsg = err.response?.data?.message || 'Failed to upload profile picture.';
+             setMsgFor('profile', errorMsg);
+             throw new Error(errorMsg); // Re-throw so Profile.jsx knows it failed
+        } finally {
+            setIsUploadingProfilePic(false);
+        }
+    }
+
+
+    async function removeProfilePicture() {
+         if (isUploadingProfilePic) return;
+         setIsUploadingProfilePic(true);
+         setMsgFor('profile', 'Removing picture...', null);
+
+         try {
+            // Call the new DELETE endpoint
+            const res = await api.delete('/users/me/profile-picture');
+
+            // Update profile state with the user object from backend response
+            const updatedUser = res.data.user;
+            setProfile(updatedUser);
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            setMsgFor('profile', 'Profile picture removed.');
+
+         } catch (err) {
+             console.error("Remove error in MainLayout:", err);
+             const errorMsg = err.response?.data?.message || 'Failed to remove profile picture.';
+             setMsgFor('profile', errorMsg);
+             throw new Error(errorMsg); // Re-throw
+         } finally {
+             setIsUploadingProfilePic(false);
+         }
+     }
+
+
+     
 
   // add this above the first useEffect
 async function loadProfile() {
@@ -115,10 +182,26 @@ async function loadProfile() {
     socket.current.on('connect', () => console.log('Socket connected (client):', socket.current.id));
     socket.current.on('disconnect', (reason) => console.log('Socket disconnected (client):', reason));
     socket.current.on('connect_error', (err) => console.error('Socket connect_error (client):', err.message));
+
+    const handleMessagesSeen = ({ readerId, senderId }) => {
+   console.log(`'messages-seen' event received: User ${readerId} saw messages from ${senderId}`);
+   // Agar hum hi sender the (matlab hamare messages friend ne dekhe)
+   if (senderId === profile?._id) {
+    console.log(`Updating seen status for chat with ${readerId}`);
+    setSeenByFriendMap(prevMap => ({
+     ...prevMap,
+     [readerId]: true // Mark karo ki is friend ne hamare messages dekh liye hain
+    }));
+   }
+  };
+    socket.current.on('messages-seen', handleMessagesSeen);
+
+    
     
     // Cleanup function: Jab component destroy hoga (logout), to connection band kar dega.
     return () => {
         if (socket.current) {
+            socket.current.off('messages-seen', handleMessagesSeen);
             socket.current.disconnect();
             socket.current = null;
             console.log('Socket connection cleaned up on unmount.');
@@ -129,48 +212,73 @@ async function loadProfile() {
 // EFFECT 2: Handling Incoming Messages
 // Yeh effect naye messages ko sunega aur handle karega.
 useEffect(() => {
-    const currentSocket = socket.current;
-    // Agar socket connected nahi hai, to kuch mat karo.
-    if (!currentSocket) return;
+  const currentSocket = socket.current;
+  // Agar socket connected nahi hai, to kuch mat karo.
+  if (!currentSocket) return;
 
-    // Jab 'receive-message' event aaye to yeh function chalega.
-    const handleReceiveMessage = (newMessage) => {
-    console.log('receive-message event (client):', newMessage);
+  // Jab 'receive-message' event aaye to yeh function chalega.
+  const handleReceiveMessage = (newMessage) => {
+  console.log('receive-message event (client):', newMessage);
 
-    // Case 1: Agar message uss chat ke liye hai jo abhi khuli hui hai
-    if (newMessage.from === activeChatFriend?._id) {
-        console.log("Message is for the active chat. Updating UI now.");
-        shouldScrollToBottom.current = true;
-        setChatMessages(prevMessages => [...prevMessages, newMessage]);
-        
-        // Backend ko batao ki message padh liya gaya hai
-        api.get(`/chats/${activeChatFriend._id}/messages`).catch(e => console.error("Failed to mark as read"));
-    } 
-    // Case 2: Agar message uss chat ke liye hai jo band hai
-    else {
-        setChatList(prevChatList => {
-            // Check karo ki message bhejne wala user hamari local list mein hai ya nahi
-            const senderInList = prevChatList.find(friend => friend._id === newMessage.from);
+    // --- YEH LOGIC WAISE HI RAHEGI ---
+  if (newMessage.from !== activeChatFriend?._id && profile?._id === newMessage.to) {
+    console.log(`New message received from ${newMessage.from}. Resetting seen status for this chat.`);
+    setSeenByFriendMap(prevMap => {
+     const newMap = { ...prevMap };
+     delete newMap[newMessage.from]; // Seen status hata do kyunki naya unread message aa gaya hai
+     return newMap;
+    });
+  }
+    // --- YAHAN TAK ---
 
-            if (senderInList) {
-                // AGAR SENDER LIST MEIN HAI (Fast Path):
-                // Count ko turant locally update karo.
-                console.log(`INSTANT UPDATE: Message from known sender ${newMessage.from}. Incrementing count.`);
-                return prevChatList.map(friend =>
+
+  // Case 1: Agar message uss chat ke liye hai jo abhi khuli hui hai
+  if (newMessage.from === activeChatFriend?._id) {
+    console.log("Message is for the active chat. Updating UI now.");
+    shouldScrollToBottom.current = true;
+    setChatMessages(prevMessages => [...prevMessages, newMessage]);
+   
+        // --- NAYA/MODIFIED LOGIC START ---
+        // Agar chat active hai, LEKIN tab background mein hai,
+        // toh sidebar mein unread count dikhao.
+        if (document.hidden) {
+            console.log("Tab is hidden. Updating unread count in sidebar for active chat.");
+            setChatList(prevChatList =>
+                prevChatList.map(friend =>
                     friend._id === newMessage.from
                         ? { ...friend, unreadCount: (friend.unreadCount || 0) + 1 }
                         : friend
-                );
-            } else {
-                // AGAR SENDER LIST MEIN NAHI HAI (Fallback Path):
-                // Iska matlab hamari local list purani hai. Server se fresh list fetch karo.
-                console.log(`STALE LIST: Message from ${newMessage.from} not in local list. Fetching fresh list from server.`);
-                loadChatsList(); 
-                // Abhi ke liye state ko mat badlo, API call ke baad woh khud update ho jayegi.
-                return prevChatList;
-            }
-        });
-    }
+                )
+            );
+        }
+        // --- NAYA/MODIFIED LOGIC END ---
+
+  }
+  // Case 2: Agar message uss chat ke liye hai jo band hai
+  else {
+    setChatList(prevChatList => {
+      // Check karo ki message bhejne wala user hamari local list mein hai ya nahi
+      const senderInList = prevChatList.find(friend => friend._id === newMessage.from);
+
+      if (senderInList) {
+        // AGAR SENDER LIST MEIN HAI (Fast Path):
+        // Count ko turant locally update karo.
+        console.log(`INSTANT UPDATE: Message from known sender ${newMessage.from}. Incrementing count.`);
+        return prevChatList.map(friend =>
+          friend._id === newMessage.from
+            ? { ...friend, unreadCount: (friend.unreadCount || 0) + 1 }
+            : friend
+        );
+      } else {
+        // AGAR SENDER LIST MEIN NAHI HAI (Fallback Path):
+        // Iska matlab hamari local list purani hai. Server se fresh list fetch karo.
+        console.log(`STALE LIST: Message from ${newMessage.from} not in local list. Fetching fresh list from server.`);
+        loadChatsList();
+        // Abhi ke liye state ko mat badlo, API call ke baad woh khud update ho jayegi.
+        return prevChatList;
+      }
+    });
+  }
 };
 
     // Event listener set karo.
@@ -181,7 +289,7 @@ useEffect(() => {
     return () => {
         currentSocket.off('receive-message', handleReceiveMessage);
     };
-}, [activeChatFriend?._id]);
+}, [activeChatFriend?._id, profile?._id, loadChatsList]);
 
   // Polling for notifications and chat list
   useEffect(() => {
@@ -248,6 +356,12 @@ useEffect(() => {
     // Scroll flag ko shuruaat mein false set kar do
     shouldScrollToBottom.current = false; 
 
+    setSeenByFriendMap(prevMap => {
+   const newMap = { ...prevMap };
+   delete newMap[friend._id];
+   return newMap;
+  });
+
     try {
         const res = await api.get(`/chats/${friend._id}/messages`);
         const { messages, firstUnreadId } = res.data;
@@ -261,7 +375,12 @@ useEffect(() => {
             shouldScrollToBottom.current = true;
         }
 
-        setChatMessages(messages || []);
+        setChatMessages(res.data.messages || []);
+        if (res.data.firstUnreadId) {
+    firstUnreadMsgId.current = res.data.firstUnreadId;
+   } else {
+    shouldScrollToBottom.current = true;
+   }
         await loadChatsList();
         
     } catch (err) {
@@ -269,55 +388,67 @@ useEffect(() => {
     }
 }
 
-  async function sendChatMessage(e) {
+  async function sendChatMessage(e, directText = null) { // 1. Add directText parameter
     e?.preventDefault?.();
-    if (!chatInput.trim() || !activeChatFriend || !profile) return;
 
-    const text = chatInput.trim();
-    setChatInput('');
+    // 2. Determine the text to send
+    const textToSend = (directText || chatInput).trim();
+
+    // 3. Check if textToSend is valid
+    if (!textToSend || !activeChatFriend || !profile) return;
+
+    setSeenByFriendMap(prevMap => {
+   const newMap = { ...prevMap };
+   delete newMap[activeChatFriend._id]; // Is chat ka seen status reset karo
+   return newMap;
+  });
+
+    // 4. Clear input ONLY if it was a form submission (not a direct emoji send)
+    if (!directText) {
+      setChatInput('');
+      // Height reset will be handled in Chats.jsx via a useEffect
+    }
 
     // Step 1: Ek temporary message object banakar UI mein turant dikhao.
     const tempId = `temp_${Date.now()}`;
     const optimisticMessage = {
-        _id: tempId,
-        from: profile._id, // Apni ID
-        to: activeChatFriend._id,
-        text: text,
-        createdAt: new Date().toISOString(),
+      _id: tempId,
+      from: profile._id, // Apni ID
+      to: activeChatFriend._id,
+      text: textToSend, // 5. Use textToSend
+      createdAt: new Date().toISOString(),
     };
 
     // Step 2: React state ko update karke message UI par foran show karo.
     shouldScrollToBottom.current = true;
     setChatMessages(prevMessages => [...prevMessages, optimisticMessage]);
     
-    // BROWSER CONSOLE MEIN CHECK KARO
     console.log("IMMEDIATE UI UPDATE:", optimisticMessage);
 
     try {
-        // Step 3: Ab background mein server ko request bhejo.
-        const res = await api.post(`/chats/${activeChatFriend._id}/message`, { text });
-        const savedMessageFromServer = res.data;
+      // Step 3: Ab background mein server ko request bhejo.
+      const res = await api.post(`/chats/${activeChatFriend._id}/message`, { text: textToSend }); // 6. Use textToSend
+      const savedMessageFromServer = res.data;
 
-        // BROWSER CONSOLE MEIN CHECK KARO
-        console.log("SERVER RESPONSE (REAL MESSAGE):", savedMessageFromServer);
+      console.log("SERVER RESPONSE (REAL MESSAGE):", savedMessageFromServer);
 
-        // Step 4: UI mein temporary message ko server se mile final message se badal do.
-        setChatMessages(prevMessages =>
-            prevMessages.map(message =>
-                message._id === tempId ? savedMessageFromServer : message
-            )
-        );
+      // Step 4: UI mein temporary message ko server se mile final message se badal do.
+      setChatMessages(prevMessages =>
+        prevMessages.map(message =>
+          message._id === tempId ? savedMessageFromServer : message
+        )
+      );
 
     } catch (err) {
-        console.error("MESSAGE FAILED TO SEND:", err);
-        setMsgFor('chats', 'Message failed to send. Please try again.');
-        // Agar message fail ho gaya, to UI se temporary message hata do.
-        setChatMessages(prevMessages => prevMessages.filter(message => message._id !== tempId));
+      console.error("MESSAGE FAILED TO SEND:", err);
+      setMsgFor('chats', 'Message failed to send. Please try again.');
+      // Agar message fail ho gaya, to UI se temporary message hata do.
+      setChatMessages(prevMessages => prevMessages.filter(message => message._id !== tempId));
     } finally {
-        // Chat list (sidebar) ko update karo.
-        await loadChatsList();
+      // Chat list (sidebar) ko update karo.
+      await loadChatsList();
     }
-}
+  }
 
   // Other Functions
   function setMsgFor(viewName, text, autoClearMs = 4000) {
@@ -357,14 +488,7 @@ useEffect(() => {
     } catch (err) { /* ignore */ }
 }
   function stopChatPolling() { if (chatListPollingRef.current) { clearInterval(chatListPollingRef.current); chatListPollingRef.current = null; } }
-  async function deleteAccount() {
-    if (!window.confirm('ARE YOU SURE?\n\nThis will permanently delete your account, posts, messages, and all other data. This action cannot be undone.')) return;
-    try {
-      const res = await api.delete('/users/me');
-      alert(res.data.message || 'Account deleted successfully.');
-      logout();
-    } catch (err) { setMsgFor('profile', err.response?.data?.message || 'Failed to delete account'); }
-  }
+  
   function logout() { localStorage.removeItem('token'); localStorage.removeItem('user'); nav('/'); }
 
   async function updateProfile(e) {
@@ -431,20 +555,66 @@ useEffect(() => {
     if (!currentlyLiked) { await toggleLike(postId); }
   }
 
+  async function handleChangePassword(passwordData) {
+    const { oldPassword, newPassword, confirmNewPassword } = passwordData;
+    try {
+      const res = await api.post('/users/change-password', {
+        oldPassword,
+        newPassword,
+        confirmNewPassword
+      });
+      setMsgFor('settings', res.data.message);
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || 'Failed to change password';
+      setMsgFor('settings', errorMsg);
+      throw new Error(errorMsg); // Re-throw error taaki component ko pata chale
+    }
+  }
+
+  async function handleDeleteAccount(password) {
+  try {
+   const res = await api.post('/users/delete-account', { password });
+      // --- CHANGES START ---
+   // alert(res.data.message || 'Account deleted successfully.'); // <-- YEH LINE HATA DO
+   // logout(); // <-- YEH LINE BHI HATA DO
+      return res.data.message || 'Your account and all associated data have been successfully deleted.'; // <-- YEH LINE ADD KARO
+      // --- CHANGES END ---
+  } catch (err) {
+   const errorMsg = err.response?.data?.message || 'Failed to delete account';
+   setMsgFor('settings', errorMsg);
+   throw new Error(errorMsg); // Re-throw error
+  }
+ }
+
+  async function handleSubmitFeedback(feedbackData) {
+  const { type, message } = feedbackData;
+  try {
+      // YEH LINE BADLI HAI: '/api/feedback' se '/feedback' kiya
+   const res = await api.post('/feedback', { type, message }); 
+   setMsgFor('settings', res.data.message);
+  } catch (err) {
+   const errorMsg = err.response?.data?.message || 'Failed to send feedback';
+   setMsgFor('settings', errorMsg);
+   throw new Error(errorMsg); // Re-throw error
+  }
+ }
+
   const contextProps = {
     users, loadUsers, sendRequest, requests, loadRequests, respond, processingRequestId,
     myPosts, loadMyPosts, deletePost, friendPosts, loadFriendPosts, file, setFile, uploadPost,
     inputKey, msgs, setMsgFor, friends, loadFriends, removeFriend, profile, profileForm,
-    setProfileForm, updateProfile, deleteAccount, likeProcessing, toggleLike, doubleLikedMap,
+    setProfileForm, updateProfile, likeProcessing, toggleLike, doubleLikedMap,
     handleDoubleLike, chatList, openChat, activeChatFriend, setActiveChatFriend, chatMessages,
-    chatInput, setChatInput, sendChatMessage, stopChatPolling, chatContainerRef, firstUnreadMsgId,
-    markRequestsSeen, markSuggestionsSeen
+    chatInput, setChatInput, sendChatMessage, stopChatPolling, chatContainerRef, firstUnreadMsgId, uploadProfilePicture,   // <--- ADD
+        removeProfilePicture, isUploadingProfilePic, 
+    markRequestsSeen, markSuggestionsSeen, seenByFriendMap, loadChatsList, handleChangePassword, handleDeleteAccount,
+    handleSubmitFeedback, logout
   };
 
   return (
     <div className="main-layout">
       <Sidebar
-        profile={profile} logout={logout} notif={notif}
+        profile={profile} notif={notif}
         unreadSendersCount={unreadSendersCount} isSidebarOpen={isSidebarOpen}
         setSidebarOpen={setSidebarOpen}
       />

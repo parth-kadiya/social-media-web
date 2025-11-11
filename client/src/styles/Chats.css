@@ -14,7 +14,7 @@
   background-color: #fafafa;
 }
 .chat-contact {
-  padding: 16px;
+  padding: 12px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -24,6 +24,12 @@
 }
 .chat-contact:hover {
   background-color: #f0f2f5;
+}
+
+.chat-contact-main {
+    display: flex;
+    align-items: center;
+    gap: 12px; /* Space between Avatar and text */
 }
 .chat-contact.active {
   background-color: #e7f3ff;
@@ -61,8 +67,9 @@
   font-weight: 600;
   display: flex;
   align-items: center;
+  gap: 10px;
 }
-.chat-window-header h3 { margin: 0; }
+.chat-window-header h3 { margin: 0; flex-grow: 1;}
 .close-chat-btn {
     display: none;
     margin-right: 12px;
@@ -98,7 +105,7 @@
   color: #262626;
   border-bottom-left-radius: 4px;
 }
-.message-text { word-break: break-word; }
+.message-text { word-break: break-word; white-space: pre-wrap;}
 .message-timestamp {
   font-size: 0.75rem;
   color: rgba(255,255,255,0.8);
@@ -108,17 +115,63 @@
 .message-bubble-wrapper.received .message-timestamp { color: #8e8e8e; }
 .chat-input-form {
   display: flex;
-  padding: 16px;
+  padding: 12px 16px; /* Thodi padding adjust ki */
   border-top: 1px solid #dbdbdb;
-  gap: 12px;
+  gap: 10px; /* Thoda gap adjust kiya */
+  align-items: flex-end; /* IMPORTANT: Buttons ko textarea ke bottom mein align karega */
+  background: #fff; /* Ensure it has a background */
 }
+
+
+.emoji-picker-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  color: #555;
+  font-size: 1.6rem; /* Icon size */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Align with send button height */
+  height: 44px;
+  width: 35px;
+  flex-shrink: 0; /* Taki shrink na ho */
+  transition: color 0.2s;
+}
+.emoji-picker-btn:hover {
+  color: #000;
+}
+
+
 .chat-input {
   flex-grow: 1;
-  padding: 12px;
+  padding: 10px 16px; /* Padding adjust ki */
   border: 1px solid #ccc;
-  border-radius: 22px;
+  border-radius: 20px; /* Rounded corners */
   outline: none;
+  font-family: inherit; /* Same font as app */
+  font-size: 1rem;
+  resize: none; /* Manual resize disable */
+ 
+  /* Auto-height magic */
+  /* min-height: 24px; */ /* Yeh commented out hai, sahi hai */
+  max-height: 120px; /* Approx 5-6 lines */
+  overflow-y: hidden; /* Hide scrollbar by default */
+  line-height: 1.4; /* Better line spacing */
+ 
+  /* --- NEW: Initial single-line fixed styles --- */
+  height: 23px; /* Fixed for one line, matches button height */
+  white-space: pre; /* No wrap, horizontal scroll for long text */
+  overflow-x: auto; /* Horizontal scroll when needed */
+  /* --- END NEW --- */
 }
+
+.chat-input[style*="overflow-y: auto"] {
+  overflow-y: auto !important;
+}
+
 .send-button {
   border: none;
   background: #0095f6;
@@ -131,8 +184,82 @@
   justify-content: center;
   cursor: pointer;
   font-size: 1.2rem;
+  flex-shrink: 0; /* Prevent shrinking */
 }
 .send-button:disabled { background-color: #b2dffc; cursor: not-allowed; }
+
+.chat-input-wrapper {
+  position: relative;
+}
+
+.emoji-picker-panel {
+  position: absolute;
+  bottom: 100%; /* Form ke theek upar */
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #dbdbdb;
+  border-bottom: none; /* Neeche form ka border hai */
+  border-radius: 16px 16px 0 0; /* Upar se rounded corners */
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-around; /* Emojis ko evenly spread karega */
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.06); /* Halki shadow */
+  z-index: 10;
+}
+
+.quick-emoji-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.5rem; /* Emojis thode bade */
+  padding: 4px;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+.quick-emoji-btn:hover {
+  background-color: #f0f2f5;
+}
+
+.date-separator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 12px 0; /* Upar-neeche thodi space */
+  width: 100%;
+}
+
+.date-separator span {
+  background-color: #e1f3fb; /* WhatsApp jaisa light blue system message */
+  color: #555;
+  padding: 6px 12px;
+  border-radius: 15px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.seen-status {
+ font-size: 0.75rem; /* Chhota font */
+ color: #8e8e8e; /* Halki grey color */
+ text-align: right; /* Right align karo */
+ margin-top: 2px; /* Message bubble se thodi si jagah */
+ /* Sirf sent messages ke neeche dikhega, isliye margin-right add kar sakte hain */
+ /* padding-right: 5px; Adjust if needed */
+}
+
+.message-container {
+ display: flex;
+ flex-direction: column;
+}
+.message-container.sent {
+ align-items: flex-end; /* Sent messages ko right align karo */
+}
+.message-container.received {
+ align-items: flex-start; /* Received messages ko left align karo */
+}
+
+
 
 @media (max-width: 768px) {
     .chat-container {

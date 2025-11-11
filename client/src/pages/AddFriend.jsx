@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import Avatar from '../components/Avatar';
 import '../styles/AddFriend.css';
 
 export default function AddFriend() {
@@ -21,10 +22,15 @@ export default function AddFriend() {
       <div className="users-list">
         {users.map(u => (
           <div key={u._id} className="user-card">
-            <div className="user-info">
-              <strong className="user-name">{u.firstName} {u.lastName}</strong>
-              <span className="user-username">@{u.username}</span>
+            {/* --- UPDATE: Add Avatar and adjust layout --- */}
+            <div className="user-card-content"> {/* Wrap avatar and info */}
+              <Avatar src={u.profilePictureUrl} alt={u.firstName} size="medium" />
+              <div className="user-info">
+                <strong className="user-name">{u.firstName} {u.lastName}</strong>
+                <span className="user-username">@{u.username}</span>
+              </div>
             </div>
+            {/* --- END UPDATE --- */}
             <button className="add-button" onClick={() => sendRequest(u._id)}>Add Friend</button>
           </div>
         ))}

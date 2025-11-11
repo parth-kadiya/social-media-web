@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import Avatar from '../components/Avatar';
 import '../styles/YourFriends.css';
 
 export default function YourFriends() {
@@ -20,10 +21,15 @@ export default function YourFriends() {
       <div className="friends-list">
         {friends.map(f => (
           <div key={f._id} className="friend-card">
-            <div className="friend-info">
-              <strong className="friend-name">{f.firstName} {f.lastName}</strong>
-              <span className="friend-username">@{f.username}</span>
+             {/* --- UPDATE: Add Avatar and adjust layout --- */}
+             <div className="friend-card-content"> {/* Wrap avatar and info */}
+                <Avatar src={f.profilePictureUrl} alt={f.firstName} size="medium" />
+                <div className="friend-info">
+                  <strong className="friend-name">{f.firstName} {f.lastName}</strong>
+                  <span className="friend-username">@{f.username}</span>
+                </div>
             </div>
+            {/* --- END UPDATE --- */}
             <button className="remove-button" onClick={() => removeFriend(f._id)}>Remove</button>
           </div>
         ))}

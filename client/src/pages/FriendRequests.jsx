@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import Avatar from '../components/Avatar';
 import '../styles/FriendRequests.css';
 
 export default function FriendRequests() {
@@ -21,9 +22,12 @@ export default function FriendRequests() {
       <div className="requests-list">
         {requests.filter(r => r.from).map(r => (
           <div key={r._id} className="request-card">
-            <div className="request-info">
-              <strong className="request-name">{r.from.firstName} {r.from.lastName}</strong>
-              <span className="request-username">@{r.from.username}</span>
+            <div className="request-card-content"> {/* Group avatar and info */}
+                <Avatar src={r.from.profilePictureUrl} alt={r.from.firstName} size="medium" />
+                <div className="request-info">
+                    <strong className="request-name">{r.from.firstName} {r.from.lastName}</strong>
+                    <span className="request-username">@{r.from.username}</span>
+                </div>
             </div>
             <div className="request-actions">
               <button

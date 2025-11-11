@@ -1,0 +1,180 @@
+/* src/styles/Settings.css */
+
+.settings-page {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+/* Main settings menu */
+.settings-menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.settings-menu-item {
+  border-bottom: 1px solid #dbdbdb;
+}
+
+.settings-menu-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 18px 12px;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.settings-menu-button:hover {
+  background-color: #f9f9f9;
+}
+
+.settings-menu-icon {
+  margin-right: 12px;
+  color: #555;
+}
+
+.settings-menu-chevron {
+  color: #ccc;
+}
+
+/* Back button for sub-pages */
+.settings-back-button {
+  display: inline-flex;
+  align-items: center;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  color: #0095f6;
+  cursor: pointer;
+  padding: 8px 0;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+.settings-back-button svg {
+  margin-right: 8px;
+}
+
+/* Common form styles */
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Contact Us specific */
+.contact-us-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.contact-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.contact-form-group label {
+  font-weight: 600;
+}
+.contact-form-group select,
+.contact-form-group textarea {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box; /* Important */
+}
+.contact-form-group textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.collaboration-links {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.collaboration-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: #0095f6;
+  font-weight: 500;
+  font-size: 1.1rem;
+}
+.collaboration-links a svg {
+  font-size: 1.3rem;
+}
+
+
+/* Delete Account Modal */
+.delete-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050;
+}
+
+.delete-modal-content {
+  background: #fff;
+  padding: 24px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.delete-modal-content h3 {
+  margin: 0;
+  text-align: center;
+  color: #ed4956;
+}
+
+.delete-modal-content p {
+  margin: 0;
+  text-align: center;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.delete-modal-content .form-group {
+  width: 100%;
+}
+
+.delete-modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.settings-menu-button.logout {
+  color: #ed4956; /* Laal rang */
+  font-weight: 600;
+}
+
+.settings-menu-button.logout .settings-menu-icon {
+  color: #ed4956; /* Icon ko bhi laal karo */
+}
+
+.settings-menu-button.logout:hover {
+  background-color: #fdf6f6; /* Halki laal highlight hover par */
+}

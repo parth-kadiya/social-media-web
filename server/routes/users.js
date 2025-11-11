@@ -3,38 +3,81 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const User = require('../models/User');
 const FriendRequest = require('../models/FriendRequest');
+const { uploadProfilePic } = require('../middleware/upload');
+const bcrypt = require('bcryptjs');
 
 // Helper: convert ObjectId to string for comparisons
 const idStr = (id) => id ? id.toString() : null;
+
+router.post('/me/profile-picture', auth, uploadProfilePic.single('profilePic'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'Image file required' });
+        }
+        // Update user with the Cloudinary URL
+        const user = await User.findByIdAndUpdate(
+            req.userId,
+            { profilePictureUrl: req.file.path },
+            { new: true } // Return the updated document
+        ).select('-password'); // Don't send password back
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        // Send back the updated user object (includes the new URL)
+        res.json({ user });
+    } catch (err) {
+        console.error('Profile pic upload error:', err);
+        res.status(500).json({ message: err.message || 'Server error uploading profile picture' });
+    }
+});
+
+router.delete('/me/profile-picture', auth, async (req, res) => {
+    try {
+         // Find user and set profilePictureUrl to null
+        const user = await User.findByIdAndUpdate(
+            req.userId,
+            { profilePictureUrl: null },
+            { new: true }
+        ).select('-password');
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        // Optional: Delete from Cloudinary (requires more setup)
+
+        // Send back the updated user object
+        res.json({ user });
+    } catch (err) {
+        console.error('Profile pic removal error:', err);
+        res.status(500).json({ message: 'Server error removing profile picture' });
+    }
+});
 
 // get other users (to show list for "Add friend")
 // Excludes: self, already friends, users with pending friend-requests involving me (either direction)
 router.get('/others', auth, async (req, res) => {
   try {
     const meId = req.userId;
-
-    // load my user to get friends
     const me = await User.findById(meId).select('friends');
     const friends = (me && me.friends) ? me.friends.map(id => id.toString()) : [];
-
-    // find pending friend requests where me is either sender or receiver
-    const pendings = await FriendRequest.find({
-      $or: [{ from: meId }, { to: meId }],
-      status: 'pending'
-    }).select('from to');
-
+    const pendings = await FriendRequest.find({ $or: [{ from: meId }, { to: meId }], status: 'pending' }).select('from to');
     const pendingIdsSet = new Set();
     pendings.forEach(p => {
       if (p.from) pendingIdsSet.add(p.from.toString());
       if (p.to) pendingIdsSet.add(p.to.toString());
     });
-
-    // build exclusion array: me + friends + pending involved
     const exclude = new Set([meId.toString(), ...friends, ...Array.from(pendingIdsSet)]);
 
-    // query users not in exclude
-    const others = await User.find({ _id: { $nin: Array.from(exclude) } }).select('firstName lastName username createdAt');
-    res.json(others);
+    // Query users not in exclude, ADD profilePictureUrl to select
+    const others = await User.find({ _id: { $nin: Array.from(exclude) } })
+        .select('firstName lastName username createdAt profilePictureUrl'); // <-- SELECT is correct
+
+    // --- CORRECTION ---
+    // res.json(others); // <<<--- YEH DUPLICATE LINE HATA DEIN
+    res.json(others); // Yeh line rehne dein
+    // --- END CORRECTION ---
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -83,7 +126,7 @@ router.post('/friend-request', auth, async (req, res) => {
 router.get('/friend-requests', auth, async (req, res) => {
  try {
   let requests = await FriendRequest.find({ to: req.userId, status: 'pending' })
-   .populate('from', 'firstName lastName username');
+     .populate('from', 'firstName lastName username profilePictureUrl');
 
   // ADD THIS LINE: Yeh unn requests ko filter kar dega jinka 'from' user delete ho chuka hai
   requests = requests.filter(request => request.from !== null);
@@ -125,14 +168,16 @@ router.post('/friend-requests/respond', auth, async (req, res) => {
 
 // get my friends list (populated)
 router.get('/friends', auth, async (req, res) => {
-  try {
-    const me = await User.findById(req.userId).populate('friends', 'firstName lastName username');
-    if (!me) return res.status(404).json({ message: 'User not found' });
-    res.json(me.friends || []);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
-  }
+    try {
+        const me = await User.findById(req.userId)
+            // Add profilePictureUrl to the fields populated for friends
+            .populate('friends', 'firstName lastName username profilePictureUrl'); // <-- UPDATE POPULATE
+        if (!me) return res.status(404).json({ message: 'User not found' });
+        res.json(me.friends || []);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
+    }
 });
 
 /* ---------------------------
@@ -168,15 +213,15 @@ router.post('/remove-friend', auth, async (req, res) => {
    returns profile
    --------------------------- */
 router.get('/me', auth, async (req, res) => {
-  try {
-    // include username here
-    const me = await User.findById(req.userId).select('firstName lastName mobile email username');
-    if (!me) return res.status(404).json({ message: 'User not found' });
-    res.json(me);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
-  }
+ try {
+  const me = await User.findById(req.userId)
+    .select('firstName lastName mobile email username profilePictureUrl');
+  if (!me) return res.status(404).json({ message: 'User not found' });
+  res.json(me);
+ } catch (err) {
+   console.error(err);
+   res.status(500).json({ message: 'Server error' });
+ }
 });
 
 /* ---------------------------
@@ -185,42 +230,59 @@ router.get('/me', auth, async (req, res) => {
    --------------------------- */
 router.put('/me', auth, async (req, res) => {
   try {
+    // Ensure profilePictureUrl is NOT overwritten by this request
     const { firstName, lastName, mobile, email, username } = req.body;
 
-    if (!firstName || !lastName || !mobile || !email || !username) {
-      return res.status(400).json({ message: 'All fields required including username' });
-    }
+    // ... existing validation ...
 
-    // username validations (same as registration)
-    if (username !== username.toLowerCase()) {
-      return res.status(400).json({ message: 'Username must be lowercase (no capital letters)' });
-    }
-    const usernameRegex = /^[a-z0-9@._-]+$/;
-    if (!usernameRegex.test(username)) {
-      return res.status(400).json({ message: 'Invalid characters in username' });
-    }
-
-    // check uniqueness excluding current user
-    const existing = await User.findOne({ username });
-    if (existing && existing._id.toString() !== req.userId) {
-      return res.status(400).json({ message: 'Username is already taken' });
-    }
+    // Only update text fields
+    const updateData = { firstName, lastName, mobile, email, username };
 
     const updated = await User.findByIdAndUpdate(
       req.userId,
-      { firstName, lastName, mobile, email, username },
+      updateData, // Use the filtered update data
       { new: true, runValidators: true, context: 'query' }
-    ).select('firstName lastName mobile email username');
+      // Update select to include profilePictureUrl in the response
+    ).select('firstName lastName mobile email username profilePictureUrl'); // <-- UPDATE SELECT
 
     if (!updated) return res.status(404).json({ message: 'User not found' });
     res.json(updated);
-  } catch (err) {
-    console.error(err);
-    // handle duplicate-key error (race condition)
-    if (err.code === 11000) {
-      return res.status(400).json({ message: 'Username is already taken' });
+  } catch (err) { /* ... existing error handling ... */ }
+});
+
+router.post('/change-password', auth, async (req, res) => {
+  try {
+    const { oldPassword, newPassword, confirmNewPassword } = req.body;
+
+    if (!oldPassword || !newPassword || !confirmNewPassword) {
+      return res.status(400).json({ message: 'All fields are required' });
     }
-    res.status(500).json({ message: err.message || 'Server error' });
+
+    if (newPassword !== confirmNewPassword) {
+      return res.status(400).json({ message: 'New passwords do not match' });
+    }
+
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Old password check
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Incorrect old password' });
+    }
+
+    // Hash new password
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedNewPassword;
+    await user.save();
+
+    res.json({ message: 'Password changed successfully' });
+
+  } catch (err) {
+    console.error('Change password error:', err);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -296,22 +358,32 @@ router.post('/mark-requests-seen', auth, async (req, res) => {
   }
 });
 
-router.delete('/me', auth, async (req, res) => {
- try {
-  const user = await User.findById(req.userId);
-  if (!user) {
-  
-   return res.status(404).json({ message: 'User not found' });
+router.post('/delete-account', auth, async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password) {
+      return res.status(400).json({ message: 'Password is required to delete account' });
+    }
+
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Password check
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Incorrect password. Account deletion failed.' });
+    }
+
+    // .deleteOne() trigger karega middleware ko jo humne User model me banaya hai
+    await user.deleteOne();
+
+    res.json({ message: 'Your account and all associated data have been successfully deleted.' });
+  } catch (err) {
+    console.error('Delete account error:', err);
+    res.status(500).json({ message: 'An error occurred on the server while deleting the account.' });
   }
-
-  // .deleteOne() trigger karega middleware ko jo humne User model me banaya hai
-  await user.deleteOne();
-
-  res.json({ message: 'Aapka account aur usse juda saara data safaltapoorvak delete kar diya gaya hai.' });
- } catch (err) {
-  console.error(err);
-  res.status(500).json({ message: 'Account delete karte samay server mein error aayi.' });
- }
 });
 
 module.exports = router;

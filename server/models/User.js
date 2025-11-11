@@ -14,6 +14,7 @@ const UserSchema = new mongoose.Schema({
  username: { type: String, required: true, unique: true, lowercase: true, index: true },
  password: { type: String, required: true },
  friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+ profilePictureUrl: { type: String, default: null }, 
 
  // ---- notification / last-seen timestamps ----
  lastSeenSuggestionsAt: { type: Date, default: null },

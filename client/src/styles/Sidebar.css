@@ -30,12 +30,9 @@
   align-items: center;
   padding: 20px;
   border-bottom: 1px solid #dbdbdb;
+  gap: 12px;
 }
 
-.profile-icon {
-  color: #8e8e8e;
-  margin-right: 12px;
-}
 
 .profile-info {
   display: flex;
@@ -142,6 +139,14 @@
 }
 
 
+.sidebar-profile {
+  display: flex;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #dbdbdb;
+}
+
+
 /* --- Responsive Design --- */
 @media (max-width: 768px) {
   .sidebar {
@@ -174,3 +179,4 @@
     pointer-events: auto;
   }
 }
+

@@ -74,6 +74,122 @@
   background-color: #ed4956;
   color: white;
 }
+
+.profile-picture-section {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 30px; /* Space between picture and form */
+    align-items: center;
+}
+
+.profile-picture-container {
+    position: relative; /* For positioning buttons */
+    width: 150px;       /* Adjust size as needed */
+    height: 150px;
+    border-radius: 50%; /* Make the container round */
+    overflow: hidden;   /* Hide overflowing parts of the image */
+    border: 3px solid #eee; /* Optional border */
+    background-color: #f0f2f5; /* Background color for placeholder */
+}
+
+.profile-picture-display {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;   /* Scale the image nicely */
+}
+
+.edit-picture-btn,
+.remove-picture-btn {
+    position: absolute;
+    bottom: 5px; /* Position near the bottom */
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 35px; /* Size of the button */
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-size: 1rem; /* Icon size */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.edit-picture-btn:hover,
+.remove-picture-btn:hover {
+    background-color: rgba(0, 0, 0, 0.8);
+}
+
+.edit-picture-btn {
+    right: 10px; /* Position edit button on the right */
+}
+
+.remove-picture-btn {
+    left: 10px; /* Position remove button on the left */
+    background-color: rgba(237, 73, 86, 0.7); /* Red tint for remove */
+}
+ .remove-picture-btn:hover {
+    background-color: rgba(237, 73, 86, 0.9);
+ }
+
+ .edit-picture-btn:disabled,
+ .remove-picture-btn:disabled {
+     cursor: not-allowed;
+     opacity: 0.6;
+ }
+
+/* --- Styles for Cropper Modal --- */
+.cropper-modal {
+    position: fixed; /* Fixed position to overlay everything */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.75); /* Dark semi-transparent background */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1050; /* High z-index to be on top */
+    padding: 15px;
+    box-sizing: border-box;
+}
+
+.cropper-content {
+    background-color: #fff;
+    padding: 25px;
+    border-radius: 8px;
+    max-width: 500px; /* Max width of the modal content */
+    width: 100%;
+    max-height: 90vh; /* Max height */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    overflow: hidden; /* Prevent content spill */
+}
+
+.cropper-content h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+/* Target the image inside ReactCrop for max size */
+.ReactCrop__child-wrapper img {
+    max-height: 60vh; /* Limit image height within the modal */
+    max-width: 100%;
+}
+
+.cropper-actions {
+    margin-top: 25px;
+    display: flex;
+    gap: 15px; /* Space between buttons */
+    justify-content: center;
+    width: 100%;
+}
 @media(max-width: 500px) {
     .form-row, .danger-zone-content {
         flex-direction: column;

@@ -1,0 +1,48 @@
+/* client/src/styles/Avatar.css */
+.avatar-container {
+  border-radius: 50%;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f0f2f5;
+  flex-shrink: 0;
+  border: 1px solid #eee;
+  /* Ensure container itself doesn't collapse */
+  vertical-align: middle; /* Helps align with text */
+}
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Scale image nicely */
+  display: block;
+}
+
+/* --- Define Sizes --- */
+.avatar-small {
+  width: 32px;
+  height: 32px;
+}
+
+.avatar-medium {
+  width: 40px;
+  height: 40px;
+}
+
+.avatar-large { /* Example, you can add more sizes */
+  width: 60px;
+  height: 60px;
+}
+
+.avatar-profile {
+  width: 150px;
+  height: 150px;
+}
+
+/* Optional: Styles for icon fallback if you use it */
+.avatar-icon {
+  width: 100%;
+  height: 100%;
+  color: #bdc3c7;
+}
