@@ -98,10 +98,21 @@
   justify-content: center;
 }
 
-.nav-badge.new {
-  width: 10px;
-  height: 10px;
+.nav-badge.count {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    font-size: 0.8rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 0;
+    line-height: 22px; /* perfect center + circle */
+    overflow: hidden;
 }
+
 
 .nav-badge.count {
     min-width: 20px;

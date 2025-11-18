@@ -16,6 +16,35 @@ async function ensureFriends(meId, friendId) {
  return me.friends.map(f => f.toString()).includes(friendId.toString());
 }
 
+router.get('/:friendId/seen-status', auth, async (req, res) => {
+  try {
+    const friendId = req.params.friendId;
+    const myUserId = req.userId;
+
+    if (!await ensureFriends(myUserId, friendId)) {
+      return res.status(403).json({ message: 'Cannot check seen status for non-friend' });
+    }
+
+    // Find the last message I sent to this friend
+    const lastMessage = await Message.findOne({
+      from: myUserId,
+      to: friendId
+    }).sort({ createdAt: -1 });
+
+    if (!lastMessage) {
+      return res.json({ hasSeen: false });
+    }
+
+    // Check if this last message has been read by the friend
+    const hasSeen = lastMessage.read === true;
+
+    res.json({ hasSeen });
+  } catch (err) {
+    console.error('GET /api/chats/:friendId/seen-status error:', err);
+    res.status(500).json({ message: 'Server error checking seen status' });
+  }
+});
+
 /**
  * GET /api/chats/list
  * Return list of friends with unread counts
@@ -94,54 +123,50 @@ router.get('/:friendId/messages', auth, async (req, res) => {
  * Mark messages from friendId as read and emit 'messages-seen' event.
  */
 router.post('/:friendId/mark-read', auth, async (req, res) => {
- try {
-   const friendId = req.params.friendId; // Yeh woh friend hai jiske messages humne dekhe (sender)
-   const myUserId = req.userId; // Yeh hum hain (reader)
+  try {
+    const friendId = req.params.friendId;
+    const myUserId = req.userId;
 
-   if (!await ensureFriends(myUserId, friendId)) {
-     return res.status(403).json({ message: 'Cannot mark read for non-friend' });
-   }
+    if (!await ensureFriends(myUserId, friendId)) {
+      return res.status(403).json({ message: 'Cannot mark read for non-friend' });
+    }
 
-   // Friend se aaye hue sabhi unread messages ko read mark karo
-   const updateResult = await Message.updateMany(
-     { from: friendId, to: myUserId, read: false },
-     { $set: { read: true } }
-   );
+    // Friend se aaye hue sabhi unread messages ko read mark karo
+    const updateResult = await Message.updateMany(
+      { from: friendId, to: myUserId, read: false },
+      { $set: { read: true } }
+    );
 
-   // Agar koi message update hua hai (matlab kuch unread tha jo ab read hua)
-   if (updateResult.modifiedCount > 0) {
-     console.log(`Marked ${updateResult.modifiedCount} messages as read from ${friendId} for ${myUserId}.`);
-     try {
-       const { io, userSocketMap } = req; // io aur map ko request se access karo
-       const friendSocketIds = userSocketMap ? userSocketMap[friendId] : null; // Friend ke socket IDs
+    // Agar koi message update hua hai
+    if (updateResult.modifiedCount > 0) {
+      console.log(`Marked ${updateResult.modifiedCount} messages as read from ${friendId} for ${myUserId}.`);
+      try {
+        const { io, userSocketMap } = req;
+        const friendSocketIds = userSocketMap ? userSocketMap[friendId] : null;
 
-       if (friendSocketIds && friendSocketIds instanceof Set && friendSocketIds.size > 0) {
-         // Friend ke sabhi connected devices/tabs ko event bhejo
-         friendSocketIds.forEach(socketId => {
-           io.to(socketId).emit('messages-seen', {
-             readerId: myUserId, // Bataya ki kisne messages dekhe (humne)
-             senderId: friendId // Kiske messages dekhe gaye (friend ke)
-           });
-         });
-         console.log(`Emitted 'messages-seen' to user ${friendId} after marking messages read.`);
-       } else {
-         console.log(`User ${friendId} is not connected. Cannot emit 'messages-seen'.`);
-       }
-     } catch (emitError) {
-       console.error("Error emitting 'messages-seen' from mark-read:", emitError);
-     }
-     // Respond immediately, don't wait for socket emission
-     res.json({ ok: true, markedReadCount: updateResult.modifiedCount });
-   } else {
-     // Koi message update nahi hua (ya toh sab pehle se read the ya koi message tha hi nahi)
-     console.log(`No new messages to mark as read from ${friendId} for ${myUserId}.`);
-     res.json({ ok: true, markedReadCount: 0 });
-   }
+        if (friendSocketIds && friendSocketIds instanceof Set && friendSocketIds.size > 0) {
+          // Friend ke sabhi connected devices/tabs ko event bhejo
+          friendSocketIds.forEach(socketId => {
+            io.to(socketId).emit('messages-seen', {
+              readerId: myUserId,
+              senderId: friendId
+            });
+          });
+          console.log(`Emitted 'messages-seen' to user ${friendId} after marking messages read.`);
+        } else {
+          console.log(`User ${friendId} is not connected. Cannot emit 'messages-seen'.`);
+        }
+      } catch (emitError) {
+        console.error("Error emitting 'messages-seen' from mark-read:", emitError);
+      }
+    }
 
- } catch (err) {
-   console.error('POST /api/chats/:friendId/mark-read error:', err);
-   res.status(500).json({ message: 'Server error marking messages as read' });
- }
+    res.json({ ok: true, markedReadCount: updateResult.modifiedCount });
+    
+  } catch (err) {
+    console.error('POST /api/chats/:friendId/mark-read error:', err);
+    res.status(500).json({ message: 'Server error marking messages as read' });
+  }
 });
 
 

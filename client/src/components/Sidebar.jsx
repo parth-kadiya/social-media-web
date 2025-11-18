@@ -40,7 +40,7 @@ export default function Sidebar({ profile, notif, unreadSendersCount, isSidebarO
             {notif.newUsersCount > 0 && <span className="nav-badge new"></span>}
           </NavLink>
           <NavLink to="/home/your-friends" className="nav-item" onClick={() => setSidebarOpen(false)}>
-            <FaUsers className="nav-icon" /> Your Friends
+            <FaUsers className="nav-icon" /> My Friends
           </NavLink>
           <NavLink to="/home/chats" className="nav-item" onClick={() => setSidebarOpen(false)}>
             <FaComments className="nav-icon" /> Chats
@@ -50,7 +50,7 @@ export default function Sidebar({ profile, notif, unreadSendersCount, isSidebarO
             <FaPlusSquare className="nav-icon" /> Create Post
           </NavLink>
           <NavLink to="/home/your-posts" className="nav-item" onClick={() => setSidebarOpen(false)}>
-            <FaNewspaper className="nav-icon" /> Your Posts
+            <FaNewspaper className="nav-icon" /> My Posts
           </NavLink>
           <NavLink to="/home/friend-requests" className="nav-item" onClick={() => setSidebarOpen(false)}>
             <FaBell className="nav-icon" /> Friend Requests
