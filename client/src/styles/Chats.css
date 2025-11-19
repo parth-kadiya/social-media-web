@@ -286,4 +286,8 @@
     .close-chat-btn {
         display: block;
     }
+
+    .chat-messages {
+        padding-bottom: 60px !important; 
+    }
 }
