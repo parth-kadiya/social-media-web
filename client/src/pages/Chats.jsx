@@ -24,18 +24,16 @@ export default function Chats() {
     chatContainerRef,
     msgs,
     seenByFriendMap,
-    setSeenByFriendMap,
+    setSeenByFriendMap, // ✅ YEH LINE ADD KARO
     loadChatsList
   } = useOutletContext();
-
-  // 🔥 NEW JUGAD STATE
-  const [paddingClass, setPaddingClass] = useState('');
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const emojiPanelRef = useRef(null);
   const emojiBtnRef = useRef(null);
   const chatInputRef = useRef(null);
 
+  // Date formatting function
   const formatDate = (date) => {
     const today = new Date();
     const yesterday = new Date(today);
@@ -44,11 +42,16 @@ export default function Chats() {
     const isToday = date.toDateString() === today.toDateString();
     const isYesterday = date.toDateString() === yesterday.toDateString();
 
-    if (isToday) return 'Today';
-    if (isYesterday) return 'Yesterday';
-    return date.toLocaleDateString('en-GB');
+    if (isToday) {
+      return 'Today';
+    } else if (isYesterday) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString('en-GB');
+    }
   };
 
+  // adjustHeight function
   const adjustHeight = (val) => {
     if (!chatInputRef.current) return;
     const textarea = chatInputRef.current;
@@ -78,6 +81,7 @@ export default function Chats() {
     }
   };
 
+  // useEffect for handleClickOutside (Emoji Picker)
   useEffect(() => {
     function handleClickOutside(event) {
       if (
@@ -90,98 +94,99 @@ export default function Chats() {
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
-  useEffect(() => adjustHeight(), [chatInput]);
+  // useEffect to adjust height on input change
+  useEffect(() => {
+    adjustHeight();
+  }, [chatInput]);
 
+  // useEffect for cleanup on unmount
   useEffect(() => {
     return () => {
       setActiveChatFriend(null);
       stopChatPolling();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---------------------------------------------------
-  // 🔥 JUGAD STEP 2: Chat change → padding reset
-  useEffect(() => {
-    setPaddingClass('');
-  }, [activeChatFriend]);
-  // ---------------------------------------------------
-
-  // ---------------------------------------------------
-  // 🔥 JUGAD STEP 3: Last msg incoming → padding reset
-  useEffect(() => {
-    if (chatMessages.length > 0) {
-      const lastMsg = chatMessages[chatMessages.length - 1];
-      if (lastMsg.from !== profile?._id) {
-        setPaddingClass('');
-      }
-    }
-  }, [chatMessages, profile?._id]);
-  // ---------------------------------------------------
-
-  // ---------------------------------------------------
-  // 🔥 JUGAD STEP 4: SEND WRAPPERS
-  const handleSendWrapper = (e) => {
-    setPaddingClass('sent-padding'); // padding ON
-    sendChatMessage(e);
-  };
-
-  const handleQuickEmojiWrapper = (emoji) => {
-    setPaddingClass('sent-padding');
-    sendChatMessage(null, emoji);
-    setChatInput('');
-    setShowEmojiPicker(false);
-  };
-  // ---------------------------------------------------
-
-  // MARK AS READ LOGIC (same)
+  // Mark Read Function with Visibility Check
   const markActiveChatAsRead = useCallback(async () => {
     if (activeChatFriend?._id && profile?._id && !document.hidden) {
+      console.log(`Tab is visible and chat with ${activeChatFriend.username} is active. Attempting to mark messages as read...`);
       try {
         await api.post(`/chats/${activeChatFriend._id}/mark-read`);
-        setSeenByFriendMap(prev => ({
-          ...prev,
+        console.log(`Successfully POSTed to mark-read for ${activeChatFriend.username}.`);
+
+        setSeenByFriendMap(prevMap => ({
+          ...prevMap,
           [activeChatFriend._id]: true
         }));
-        if (loadChatsList) loadChatsList();
+
+        if (loadChatsList) {
+          loadChatsList();
+        }
       } catch (error) {
         console.error("Failed to mark messages as read:", error);
       }
+    } else {
+      console.log(`Skipping mark-read: ActiveFriend=${!!activeChatFriend?._id}, Profile=${!!profile?._id}, Hidden=${document.hidden}`);
     }
-  }, [activeChatFriend?._id, profile?._id, loadChatsList]);
+  }, [activeChatFriend?._id, profile?._id, loadChatsList, setSeenByFriendMap]);
 
+  // Effect for Visibility Change
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (!document.hidden) markActiveChatAsRead();
+      console.log("Visibility changed. Hidden:", document.hidden);
+      if (!document.hidden) {
+        markActiveChatAsRead();
+      }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () =>
+    console.log("Visibility listener added.");
+    return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      console.log("Visibility listener removed.");
+    };
   }, [markActiveChatAsRead]);
 
+  // Effect for Active Chat Change
   useEffect(() => {
+    console.log("Active chat friend changed or component mounted:", activeChatFriend?.username);
     markActiveChatAsRead();
   }, [activeChatFriend?._id, markActiveChatAsRead]);
 
+  // 3. NEW: When chatMessages update (real-time new message)
   useEffect(() => {
     if (chatMessages.length > 0 && !document.hidden) {
       markActiveChatAsRead();
     }
   }, [chatMessages, markActiveChatAsRead]);
 
+  // Event Handlers
+  const handleQuickEmojiSend = (emoji) => {
+    sendChatMessage(null, emoji);
+    setChatInput('');
+    setShowEmojiPicker(false);
+  };
+
   const handleChange = (e) => {
-    const value = e.target.value;
-    setChatInput(value);
-    adjustHeight(value);
+    const newValue = e.target.value;
+    setChatInput(newValue);
+    adjustHeight(newValue);
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
   };
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (chatInput.trim()) {
-        handleSendWrapper(e);
+        sendChatMessage(e);
       }
     }
   };
@@ -191,13 +196,11 @@ export default function Chats() {
       <h2 className="page-header">Chats</h2>
       {msgs.chats && <div className="page-message">{msgs.chats}</div>}
       <div className="chat-container">
-
-        {/* LEFT SIDEBAR */}
+        {/* Left: Friends List */}
         <div className={`chat-sidebar ${activeChatFriend ? 'mobile-hidden' : ''}`}>
           {chatList.length === 0 && (
             <div className="empty-state">No friends to chat with.</div>
           )}
-
           {chatList.map((f) => (
             <div
               key={f._id}
@@ -207,50 +210,59 @@ export default function Chats() {
               <div className="chat-contact-main">
                 <Avatar src={f.profilePictureUrl} alt={f.firstName} size="medium" />
                 <div className="contact-info">
-                  <div className="contact-name">{f.firstName} {f.lastName}</div>
+                  <div className="contact-name">
+                    {f.firstName} {f.lastName}
+                  </div>
                   <div className="contact-username">@{f.username}</div>
                 </div>
               </div>
-              {f.unreadCount > 0 && <div className="unread-badge">{f.unreadCount}</div>}
+              {f.unreadCount > 0 && (
+                <div className="unread-badge">{f.unreadCount}</div>
+              )}
             </div>
           ))}
         </div>
 
-        {/* RIGHT CHAT WINDOW */}
+        {/* Right: Active Chat Window */}
         <div className={`chat-window ${!activeChatFriend ? 'mobile-hidden' : ''}`}>
           {!activeChatFriend ? (
-            <div className="no-chat-selected"><p>Select a friend to start chatting</p></div>
+            <div className="no-chat-selected">
+              <p>Select a friend to start chatting</p>
+            </div>
           ) : (
             <>
-              {/* HEADER */}
+              {/* Chat Window Header */}
               <div className="chat-window-header">
-                <Avatar src={activeChatFriend.profilePictureUrl} alt="" size="small" />
+                <Avatar src={activeChatFriend.profilePictureUrl} alt={activeChatFriend.firstName} size="small" />
                 <h3>{activeChatFriend.firstName} {activeChatFriend.lastName}</h3>
                 <button className="close-chat-btn" onClick={() => setActiveChatFriend(null)}>← Back</button>
               </div>
 
-              {/* CHAT MESSAGES */}
-              <div className={`chat-messages ${paddingClass}`} ref={chatContainerRef}>
-                {chatMessages.map((m, index, all) => {
+              {/* Chat Messages */}
+              <div className="chat-messages" ref={chatContainerRef}>
+                {chatMessages.map((m, index, allMessages) => {
                   const mine = m.from === profile?._id;
-
-                  let showSeen = false;
+                  let showSeenStatus = false;
                   if (
+                    index === allMessages.length - 1 &&
                     mine &&
-                    index === all.length - 1 &&
-                    seenByFriendMap &&
-                    seenByFriendMap[activeChatFriend._id]
+                    seenByFriendMap && seenByFriendMap[activeChatFriend._id]
                   ) {
-                    showSeen = true;
+                    showSeenStatus = true;
                   }
 
                   let dateSeparator = null;
-                  const msgDate = new Date(m.createdAt);
-                  const prev = all[index - 1];
-                  const prevDate = prev ? new Date(prev.createdAt) : null;
-                  if (index === 0 || (prevDate && msgDate.toDateString() !== prevDate.toDateString())) {
+                  const currentMsgDate = new Date(m.createdAt);
+                  const prevMsg = allMessages[index - 1];
+                  const prevMsgDate = prevMsg ? new Date(prevMsg.createdAt) : null;
+                  if (
+                    index === 0 ||
+                    (prevMsgDate && currentMsgDate.toDateString() !== prevMsgDate.toDateString())
+                  ) {
                     dateSeparator = (
-                      <div className="date-separator"><span>{formatDate(msgDate)}</span></div>
+                      <div className="date-separator">
+                        <span>{formatDate(currentMsgDate)}</span>
+                      </div>
                     );
                   }
 
@@ -258,71 +270,38 @@ export default function Chats() {
                     <React.Fragment key={m._id || m.createdAt}>
                       {dateSeparator}
                       <div className={`message-container ${mine ? 'sent' : 'received'}`}>
-                        <div className="message-bubble-wrapper">
+                        <div data-message-id={m._id} className={`message-bubble-wrapper ${mine ? 'sent' : 'received'}`}>
                           <div className="message-bubble">
                             <div className="message-text">{m.text}</div>
                             <div className="message-timestamp">
-                              {new Date(m.createdAt).toLocaleTimeString([], {
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
+                              {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </div>
                           </div>
                         </div>
-                        {showSeen && <div className="seen-status">Seen</div>}
+                        {showSeenStatus && (
+                          <div className="seen-status">Seen</div>
+                        )}
                       </div>
                     </React.Fragment>
                   );
                 })}
               </div>
 
-              {/* INPUT BOX */}
+              {/* Chat Input Wrapper */}
               <div className="chat-input-wrapper">
                 {showEmojiPicker && (
                   <div className="emoji-picker-panel" ref={emojiPanelRef}>
                     {quickEmojis.map((emoji) => (
-                      <button
-                        key={emoji}
-                        type="button"
-                        className="quick-emoji-btn"
-                        onClick={() => handleQuickEmojiWrapper(emoji)}
-                      >
-                        {emoji}
-                      </button>
+                      <button key={emoji} type="button" className="quick-emoji-btn" onClick={() => handleQuickEmojiSend(emoji)}>{emoji}</button>
                     ))}
                   </div>
                 )}
-
-                <form onSubmit={handleSendWrapper} className="chat-input-form">
-                  <button
-                    type="button"
-                    className="emoji-picker-btn"
-                    ref={emojiBtnRef}
-                    onClick={() => setShowEmojiPicker(p => !p)}
-                  >
-                    <FaRegSmile />
-                  </button>
-
-                  <textarea
-                    ref={chatInputRef}
-                    value={chatInput}
-                    onChange={handleChange}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Message"
-                    className="chat-input"
-                    rows={1}
-                  />
-
-                  <button
-                    type="submit"
-                    className="send-button"
-                    disabled={!chatInput.trim()}
-                  >
-                    <FaPaperPlane />
-                  </button>
+                <form onSubmit={sendChatMessage} className="chat-input-form">
+                  <button type="button" className="emoji-picker-btn" ref={emojiBtnRef} onClick={() => setShowEmojiPicker((prev) => !prev)}><FaRegSmile /></button>
+                  <textarea ref={chatInputRef} value={chatInput} onChange={handleChange} onKeyDown={handleKeyDown} placeholder="Message" className="chat-input" rows={1} />
+                  <button type="submit" className="send-button" disabled={!chatInput.trim()}><FaPaperPlane /></button>
                 </form>
               </div>
-
             </>
           )}
         </div>
