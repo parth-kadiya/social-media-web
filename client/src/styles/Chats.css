@@ -288,6 +288,11 @@
     }
 
     .chat-messages {
-        padding-bottom: 40px !important; 
+        padding-bottom: 20px; 
+    }
+
+    .chat-messages.sent-padding {
+        padding-bottom: 40px !important;
+        transition: padding-bottom 0.3s ease; /* Thoda smooth animation */
     }
 }
