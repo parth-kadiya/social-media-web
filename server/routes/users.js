@@ -3,28 +3,50 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const User = require('../models/User');
 const FriendRequest = require('../models/FriendRequest');
-const { uploadProfilePic } = require('../middleware/upload');
+const { uploadProfilePic, cloudinary } = require('../middleware/upload');
 const bcrypt = require('bcryptjs');
 
 // Helper: convert ObjectId to string for comparisons
 const idStr = (id) => id ? id.toString() : null;
+
+const getPublicIdFromUrl = (url) => {
+    try {
+        const parts = url.split('/');
+        const filenameWithExtension = parts.pop();
+        const folder = parts.pop();
+        return `${folder}/${filenameWithExtension.split('.')[0]}`;
+    } catch (error) {
+        return null;
+    }
+};
 
 router.post('/me/profile-picture', auth, uploadProfilePic.single('profilePic'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ message: 'Image file required' });
         }
-        // Update user with the Cloudinary URL
+
+        // Pehle user ko find karo taki purani image mil sake
+        const currentUser = await User.findById(req.userId);
+        
+        // Agar purani image hai, to use Cloudinary se delete karo
+        if (currentUser && currentUser.profilePictureUrl) {
+             const publicId = getPublicIdFromUrl(currentUser.profilePictureUrl);
+             if (publicId) {
+                 await cloudinary.uploader.destroy(publicId);
+             }
+        }
+
+        // Nayi image save karo
         const user = await User.findByIdAndUpdate(
             req.userId,
             { profilePictureUrl: req.file.path },
-            { new: true } // Return the updated document
-        ).select('-password'); // Don't send password back
+            { new: true }
+        ).select('-password');
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
-        // Send back the updated user object (includes the new URL)
         res.json({ user });
     } catch (err) {
         console.error('Profile pic upload error:', err);
@@ -34,25 +56,33 @@ router.post('/me/profile-picture', auth, uploadProfilePic.single('profilePic'), 
 
 router.delete('/me/profile-picture', auth, async (req, res) => {
     try {
-         // Find user and set profilePictureUrl to null
-        const user = await User.findByIdAndUpdate(
-            req.userId,
-            { profilePictureUrl: null },
-            { new: true }
-        ).select('-password');
+        const user = await User.findById(req.userId);
+        
+        if (!user) return res.status(404).json({ message: 'User not found' });
 
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+        // --- NEW: Delete from Cloudinary ---
+        if (user.profilePictureUrl) {
+            const publicId = getPublicIdFromUrl(user.profilePictureUrl);
+            if (publicId) {
+                await cloudinary.uploader.destroy(publicId);
+            }
         }
-        // Optional: Delete from Cloudinary (requires more setup)
+        // -----------------------------------
 
-        // Send back the updated user object
-        res.json({ user });
+        user.profilePictureUrl = null;
+        await user.save();
+
+        // Password field hata kar bhejo
+        const userResponse = user.toObject();
+        delete userResponse.password;
+
+        res.json({ user: userResponse });
     } catch (err) {
         console.error('Profile pic removal error:', err);
         res.status(500).json({ message: 'Server error removing profile picture' });
     }
 });
+
 
 // get other users (to show list for "Add friend")
 // Excludes: self, already friends, users with pending friend-requests involving me (either direction)

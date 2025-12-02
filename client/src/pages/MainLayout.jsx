@@ -161,13 +161,12 @@ export default function MainLayout() {
     socket.current.on('disconnect', (reason) => console.log('Socket disconnected (client):', reason));
     socket.current.on('connect_error', (err) => console.error('Socket connect_error (client):', err.message));
 
-    const handleMessagesSeen = ({ readerId, senderId }) => {
-      console.log(`'messages-seen' event received: User ${readerId} saw messages from ${senderId}`);
+    const handleMessagesSeen = ({ readerId, senderId, lastSeenMsgId }) => {
+      console.log(`'messages-seen' event: User ${readerId} saw up to msg ${lastSeenMsgId}`);
       if (senderId === profile?._id) {
-        console.log(`Updating seen status for chat with ${readerId}`);
         setSeenByFriendMap(prevMap => ({
           ...prevMap,
-          [readerId]: true
+          [readerId]: lastSeenMsgId // <--- Ab hum ID store kar rahe hain, true/false nahi
         }));
       }
     };
@@ -285,7 +284,7 @@ export default function MainLayout() {
   }, [chatMessages]);
 
   // Chat Functions
-  async function openChat(friend) {
+ async function openChat(friend) {
     if (!friend || !friend._id) return;
 
     setActiveChatFriend(friend);
@@ -297,30 +296,21 @@ export default function MainLayout() {
       const res = await api.get(`/chats/${friend._id}/messages`);
       const { messages, firstUnreadId } = res.data;
 
+      // --- Fetch Exact Seen Status ---
       try {
         const seenStatusRes = await api.get(`/chats/${friend._id}/seen-status`);
-        console.log(`Seen status for ${friend.username}:`, seenStatusRes.data.hasSeen);
+        // Server ab { lastSeenMsgId: "..." } return kar raha hai
+        const { lastSeenMsgId } = seenStatusRes.data;
 
-        if (seenStatusRes.data.hasSeen) {
-          setSeenByFriendMap(prevMap => ({
-            ...prevMap,
-            [friend._id]: true
-          }));
-        } else {
-          setSeenByFriendMap(prevMap => {
-            const newMap = { ...prevMap };
-            delete newMap[friend._id];
-            return newMap;
-          });
-        }
+        setSeenByFriendMap(prevMap => ({
+          ...prevMap,
+          [friend._id]: lastSeenMsgId || null // Store ID or null
+        }));
+
       } catch (seenErr) {
         console.error("Failed to check seen status:", seenErr);
-        setSeenByFriendMap(prevMap => {
-          const newMap = { ...prevMap };
-          delete newMap[friend._id];
-          return newMap;
-        });
       }
+      // -------------------------------
 
       if (firstUnreadId) {
         firstUnreadMsgId.current = firstUnreadId;
@@ -340,11 +330,11 @@ export default function MainLayout() {
     const textToSend = (directText || chatInput).trim();
     if (!textToSend || !activeChatFriend || !profile) return;
 
-    setSeenByFriendMap(prevMap => {
-      const newMap = { ...prevMap };
-      delete newMap[activeChatFriend._id];
-      return newMap;
-    });
+    // setSeenByFriendMap(prevMap => {
+    //   const newMap = { ...prevMap };
+    //   delete newMap[activeChatFriend._id];
+    //   return newMap;
+    // });
 
     if (!directText) setChatInput('');
 
@@ -438,11 +428,19 @@ export default function MainLayout() {
     }
   }
 
-  async function uploadPost(e) {
+  async function uploadPost(e, extraData = {}) { // Accept extraData argument
     e.preventDefault();
     if (!file) return setMsgFor('createPost', 'Select file');
+    
     const form = new FormData();
     form.append('image', file);
+    
+    // --- NEW: Caption check ---
+    if (extraData.caption) {
+        form.append('caption', extraData.caption);
+    }
+    // --------------------------
+    
     try {
       await api.post('/posts/create', form, { headers: { 'Content-Type': 'multipart/form-data' } });
       setMsgFor('createPost', 'Uploaded successfully!');
@@ -451,6 +449,8 @@ export default function MainLayout() {
       nav('/home/your-posts');
     } catch (err) {
       setMsgFor('createPost', err.response?.data?.message || 'Upload error');
+      // Error ko throw karo taaki CreatePost component ko pata chale ki loading band karni hai
+      throw err; 
     }
   }
 

@@ -242,14 +242,15 @@ export default function Chats() {
               <div className="chat-messages" ref={chatContainerRef}>
                 {chatMessages.map((m, index, allMessages) => {
                   const mine = m.from === profile?._id;
+
+                  
                   let showSeenStatus = false;
-                  if (
-                    index === allMessages.length - 1 &&
-                    mine &&
-                    seenByFriendMap && seenByFriendMap[activeChatFriend._id]
-                  ) {
-                    showSeenStatus = true;
-                  }
+           
+           const lastSeenId = seenByFriendMap ? seenByFriendMap[activeChatFriend._id] : null;
+
+           if (mine && lastSeenId && m._id === lastSeenId) {
+             showSeenStatus = true;
+           }
 
                   let dateSeparator = null;
                   const currentMsgDate = new Date(m.createdAt);

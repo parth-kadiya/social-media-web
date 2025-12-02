@@ -1,0 +1,564 @@
+/* Status.css - Updated: Gradient border, Create Status color, viewer, and animations */
+
+/* -----------------------
+   Status Row Container
+   ----------------------- */
+.status-row {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #dbdbdb;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  overflow-x: auto; /* Horizontal Scroll */
+  white-space: nowrap;
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+.status-row::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Opera */
+}
+
+/* -----------------------
+   Individual Status Box
+   ----------------------- */
+.status-box {
+  position: relative;
+  width: 100px;
+  height: 160px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+  cursor: pointer;
+  
+  /* Grey Border for SEEN status */
+  border: 3px solid #9e9e9e; 
+  
+  background-color: #333; 
+  padding: 2px;
+  box-sizing: border-box;
+  
+  /* --- SAFETY FIX: Ensure no background image by default --- */
+  background-image: none; 
+}
+
+/* --- NEW: Unseen Status Gradient Border --- */
+.status-box.unseen {
+  border: 3px solid transparent; /* Transparent border to show background */
+  background-image: linear-gradient(#fff, #fff), linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  background-origin: border-box;
+  background-clip: content-box, border-box;
+}
+
+/* Make inner content area (thumbnail etc.) match outer radius */
+.status-box .inner-wrap {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  display: block;
+}
+
+/* -----------------------
+   Create Status Box
+   ----------------------- */
+.create-status-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #f0f2f5;
+  color: #0095f6; /* default accent for create button */
+  position: relative;
+  width: 100px;
+  height: 160px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  border: 1px solid #efefef;
+}
+.add-icon {
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+.create-text {
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* Text & Icon Gradient Class (apply via JS or directly in markup) */
+.gradient-text-style {
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* -----------------------
+   Thumbnail & Hover
+   ----------------------- */
+.status-thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Req 6: Default friends' status should be blurred */
+  filter: blur(3px); 
+  display: block;
+}
+
+.my-status-box .status-thumbnail {
+    filter: none;
+}
+
+
+/* Inner avatar (e.g., circular profile preview) - if needed */
+.status-thumb-avatar {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.85);
+  object-fit: cover;
+  z-index: 5;
+}
+
+/* -----------------------
+   Name Overlay in Box
+   ----------------------- */
+.status-info-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 8px 5px; /* Thoda padding kam kiya side se */
+  background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+.status-text-content {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.mini-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid #fff;
+  object-fit: cover;
+}
+.status-user-name {
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column; /* Stack vertically */
+  line-height: 1.1; /* Tight line height */
+  white-space: normal; /* Allow wrapping */
+}
+
+.status-time {
+    color: #dbdbdb;
+    font-size: 0.6rem;
+    margin-top: 2px;
+}
+
+.status-inputs {
+    width: 100%;
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.status-caption-input {
+    width: 100%;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    box-sizing: border-box; /* Important for width calculation */
+}
+
+.status-duration-select {
+    width: 100%;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    background-color: white;
+    font-family: inherit;
+}
+
+/* -----------------------
+   Full Screen Viewer
+   ----------------------- */
+.status-viewer-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #000;
+  z-index: 3000;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.status-view-content {
+    /* Ensure content takes full space */
+    position: relative;
+    width: 100%;
+    max-width: 450px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: #000; /* Solid black background */
+}
+
+.story-progress-container {
+    position: absolute;
+    top: 8px; left: 5px; right: 5px;
+    display: flex; gap: 4px; z-index: 20;
+}
+
+.story-progress-bar {
+    height: 3px; flex-grow: 1; 
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+}
+
+.story-progress-bar.completed {
+    background-color: white;
+}
+
+.story-progress-bar.active {
+    /* Simple fill for now, can be animated later */
+    background-color: white; 
+}
+
+/* Status Image Container with Tap Zones */
+.status-image-container {
+    position: relative;
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* Top Bar */
+.status-top-bar {
+  position: absolute;
+  top: 15px;
+  left: 0;
+  width: 100%;
+  padding: 10px 15px;
+  display: flex;
+  align-items: center;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
+  z-index: 10;
+  box-sizing: border-box;
+}
+
+.status-top-info {
+    display: flex;
+    flex-direction: column;
+    margin-left: 12px;
+    justify-content: center;
+}
+
+.status-top-name {
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.status-top-time {
+    color: rgba(255, 255, 255, 0.7); /* Thoda dim white */
+    font-size: 0.75rem; /* Chhota font */
+    font-weight: 400;
+}
+
+.status-close-btn, .status-delete-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+.status-delete-btn {
+  margin-left: 0;
+  margin-right: 15px;
+  color: #ed4956;
+}
+
+/* Main Image */
+.status-full-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  /* Ye line important hai blue selection rokne ke liye: */
+  user-select: none; 
+  pointer-events: none; /* Clicks pass hone do layer par */
+}
+
+/* Caption */
+.status-caption-overlay {
+  position: absolute;
+  bottom: 70px; /* Above input bar */
+  width: 100%;
+  text-align: center;
+  padding: 10px;
+  color: white;
+  background: rgba(0,0,0,0.3);
+  font-size: 1rem;
+}
+
+.status-tap-layer {
+  position: absolute;
+  top: 60px; /* Header ke niche */
+  bottom: 80px; /* Footer ke upar */
+  left: 0;
+  right: 0;
+  display: flex; /* Flexbox to split vertically */
+  z-index: 12; /* Image ke upar */
+}
+
+.tap-section {
+  height: 100%;
+  /* border: 1px solid red; Debugging ke liye use kar sakte ho */
+  position: relative;
+  display: flex;
+  align-items: center; /* Arrow ko vertical center karne ke liye */
+  justify-content: center; /* Arrow ko horizontal center karne ke liye */
+}
+
+.tap-section.left {
+  width: 30%;
+  cursor: pointer;
+}
+
+/* Center Part: 40% width (Only for Double Click) */
+.tap-section.center {
+  width: 40%;
+  /* No cursor pointer here to indicate no single click action */
+}
+
+.tap-section.right {
+  width: 30%;
+  cursor: pointer;
+}
+
+.nav-arrow {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 35px;
+  height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  font-size: 1.2rem;
+  transition: background 0.2s;
+  /* Arrow clicks should pass through to the parent div's onClick */
+  pointer-events: none; 
+}
+
+/* -----------------------
+   Double Tap Heart Overlay
+   ----------------------- */
+.status-like-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none; /* Click pass hone do */
+  animation: scaleFade 800ms ease-out;
+  z-index: 20; /* Tap layer ke bhi upar */
+}
+
+.double-tap-heart {
+  font-size: 120px;
+  background: -webkit-linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: #ed4956;
+  filter: drop-shadow(0 4px 15px rgba(0,0,0,0.4));
+}
+
+.status-like-overlay .heart {
+  font-size: 96px;
+  filter: drop-shadow(0 6px 20px rgba(0,0,0,0.6));
+  transform-origin: center;
+  color: white;
+}
+
+@keyframes scaleFade {
+  0% { transform: scale(0.6); opacity: 0; }
+  30% { transform: scale(1.2); opacity: 1; }
+  50% { transform: scale(1.0); opacity: 1; } /* Thoda stay karega */
+  100% { transform: scale(0.8); opacity: 0; }
+}
+
+/* -----------------------
+   Bottom Bar (Reply + Like)
+   ----------------------- */
+.status-bottom-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+  justify-content: center; /* Center content for 'See Views' button */
+}
+
+.see-views-btn {
+    /* Glassmorphism + Gradient Border look */
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    backdrop-filter: blur(4px);
+}
+.see-views-btn:hover { background: rgba(255,255,255,0.12); }
+
+.status-delete-btn { background: none; border: none; color: #ed4956; font-size: 1.2rem; cursor: pointer; }
+
+/* Views Modal (inside viewer) */
+.views-modal-overlay {
+    position: absolute; /* Absolute to the viewer container */
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 20; /* Above image */
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+.views-modal-header {
+    padding: 15px;
+    border-bottom: 1px solid #333;
+    color: white;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.views-list {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.view-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #333;
+    justify-content: space-between; /* Space between info and heart */
+}
+
+.view-user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.view-user-name {
+    color: white;
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.view-icon {
+    font-size: 1.2rem;
+}
+
+.view-icon.liked {
+    color: #ed4956; /* Red heart if liked */
+}
+.view-icon.not-liked {
+    color: #8e8e8e; /* Grey heart if just viewed */
+}
+
+/* Reply input and actions */
+.status-reply-input {
+  flex-grow: 1;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 10px 16px;
+  color: white;
+  outline: none;
+}
+.status-reply-input::placeholder { color: rgba(255,255,255,0.7); }
+
+.status-action-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 2rem;
+  cursor: pointer;
+}
+.status-liked { color: #ed4956; }
+
+/* -----------------------
+   Small helpers & utilities
+   ----------------------- */
+.hidden { display: none !important; }
+.flex-center { display: flex; align-items: center; justify-content: center; }
+
+
+.multiple-stories-indicator {
+    position: absolute;
+    top: 6px; right: 6px;
+    width: 10px; height: 10px;
+    background: #fff;
+    border: 2px solid #667eea;
+    border-radius: 50%;
+    z-index: 5;
+}
+
+/* -----------------------
+   Responsive tweaks
+   ----------------------- */
+@media (max-width: 420px) {
+  .status-box, .create-status-box { width: 84px; height: 140px; }
+  .status-top-name { font-size: 0.95rem; }
+  .status-full-image { max-width: 100%; }
+}
+
+/* End of Status.css */

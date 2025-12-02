@@ -23,6 +23,12 @@ const PrivateRoute = ({ children }) => {
 function App() {
   return (
     <BrowserRouter>
+      <svg width="0" height="0" style={{ position: 'absolute' }}>
+        <linearGradient id="app-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop stopColor="#667eea" offset="0%" />
+          <stop stopColor="#764ba2" offset="100%" />
+        </linearGradient>
+      </svg>
       <Routes>
         <Route path="/" element={<Auth />} />
         <Route path="/auth" element={<Auth />} />

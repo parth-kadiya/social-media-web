@@ -1,18 +1,28 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const { uploadPost } = require('../middleware/upload');
+const { uploadPost, cloudinary } = require('../middleware/upload');
 const Post = require('../models/Post');
 const User = require('../models/User');
-// const fs = require('fs').promises; // Cloudinary ke saath iski zaroorat nahi
-// const path = require('path');     // Cloudinary ke saath iski zaroorat nahi
+const Comment = require('../models/Comment'); // <--- Import Comment Model
 
-// create post (image upload)
-router.post('/create', auth, uploadPost.single('image'), async (req, res) => { // <-- YAHAN BADLAV KIYA HAI
+// 1. Create post (Modified to accept caption)
+router.post('/create', auth, uploadPost.single('image'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'Image required' });
-    const imageUrl = req.file.path; // Cloudinary URL
-    const post = new Post({ user: req.userId, imageUrl, likes: [] });
+    
+    // Caption body se nikal rahe hain
+    const { caption } = req.body; 
+
+    const imageUrl = req.file.path;
+    
+    const post = new Post({ 
+      user: req.userId, 
+      imageUrl, 
+      caption: caption || '', // Caption save kar rahe hain
+      likes: [] 
+    });
+    
     await post.save();
     res.json({ message: 'Post created', post });
   } catch (err) {
@@ -21,21 +31,25 @@ router.post('/create', auth, uploadPost.single('image'), async (req, res) => { /
   }
 });
 
-// your posts
+// Your posts (Modified to include caption)
 router.get('/mine', auth, async (req, res) => {
   try {
-    // --- CORRECTION: Add profilePictureUrl to populate ---
     const posts = await Post.find({ user: req.userId }).sort({ createdAt: -1 })
-        .populate('user', 'firstName lastName username profilePictureUrl'); // <-- ADDED profilePictureUrl
-    // --- END CORRECTION ---
-
-    const mapped = posts.map(p => ({
-        _id: p._id,
-        user: p.user, // User object now includes profilePictureUrl
-        imageUrl: p.imageUrl,
-        createdAt: p.createdAt,
-        likesCount: (p.likes || []).length,
-        likedByMe: (p.likes || []).some(id => id.toString() === req.userId)
+        .populate('user', 'firstName lastName username profilePictureUrl');
+    
+    // Promise.all use kar rahe hain taki comments count calculate ho sake
+    const mapped = await Promise.all(posts.map(async p => {
+        const commentsCount = await Comment.countDocuments({ post: p._id });
+        return {
+            _id: p._id,
+            user: p.user,
+            imageUrl: p.imageUrl,
+            caption: p.caption,
+            createdAt: p.createdAt,
+            likesCount: (p.likes || []).length,
+            commentsCount: commentsCount, // <--- Added
+            likedByMe: (p.likes || []).some(id => id.toString() === req.userId)
+        };
     }));
     res.json(mapped);
   } catch (err) {
@@ -44,25 +58,28 @@ router.get('/mine', auth, async (req, res) => {
   }
 });
 
-// friend posts (posts by friends)
+// Friend posts (Modified to include caption)
 router.get('/friends', auth, async (req, res) => {
   try {
     const me = await User.findById(req.userId).select('friends');
     const friends = (me && me.friends) ? me.friends : [];
 
-    // --- CORRECTION: Add profilePictureUrl to populate ---
     const posts = await Post.find({ user: { $in: friends } })
-      .populate('user', 'firstName lastName username profilePictureUrl') // <-- ADDED profilePictureUrl
+      .populate('user', 'firstName lastName username profilePictureUrl')
       .sort({ createdAt: -1 });
-    // --- END CORRECTION ---
 
-    const mapped = posts.map(p => ({
-         _id: p._id,
-        user: p.user, // User object now includes profilePictureUrl
-        imageUrl: p.imageUrl,
-        createdAt: p.createdAt,
-        likesCount: (p.likes || []).length,
-        likedByMe: (p.likes || []).some(id => id.toString() === req.userId)
+    const mapped = await Promise.all(posts.map(async p => {
+        const commentsCount = await Comment.countDocuments({ post: p._id });
+        return {
+            _id: p._id,
+            user: p.user,
+            imageUrl: p.imageUrl,
+            caption: p.caption,
+            createdAt: p.createdAt,
+            likesCount: (p.likes || []).length,
+            commentsCount: commentsCount, // <--- Added
+            likedByMe: (p.likes || []).some(id => id.toString() === req.userId)
+        };
     }));
     res.json(mapped);
   } catch (err) {
@@ -71,24 +88,20 @@ router.get('/friends', auth, async (req, res) => {
   }
 });
 
-// toggle like on a post (like/unlike)
+// Toggle Like (Existing logic kept same)
 router.post('/:id/like', auth, async (req, res) => {
   try {
     const postId = req.params.id;
     const userId = req.userId;
-
     const post = await Post.findById(postId);
     if (!post) return res.status(404).json({ message: 'Post not found' });
 
     const already = (post.likes || []).some(id => id.toString() === userId);
-
     if (already) {
-      // unlike
       await Post.findByIdAndUpdate(postId, { $pull: { likes: userId } });
       const updated = await Post.findById(postId);
       return res.json({ liked: false, likesCount: (updated.likes || []).length });
     } else {
-      // like
       await Post.findByIdAndUpdate(postId, { $addToSet: { likes: userId } });
       const updated = await Post.findById(postId);
       return res.json({ liked: true, likesCount: (updated.likes || []).length });
@@ -99,51 +112,99 @@ router.post('/:id/like', auth, async (req, res) => {
   }
 });
 
-// delete a post (only owner can delete) - also removes file from uploads folder
+const getPublicIdFromUrl = (url) => {
+    try {
+        // URL example: https://res.cloudinary.com/.../upload/v1234/social-app-posts/xyz.jpg
+        const parts = url.split('/');
+        const filenameWithExtension = parts.pop(); // xyz.jpg
+        const folder = parts.pop(); // social-app-posts
+        const publicId = `${folder}/${filenameWithExtension.split('.')[0]}`; // social-app-posts/xyz
+        return publicId;
+    } catch (error) {
+        console.error("Error extracting publicId:", error);
+        return null;
+    }
+};
+
+// Delete Post (Existing logic kept same)
 router.delete('/:id', auth, async (req, res) => {
     try {
         const postId = req.params.id;
         const post = await Post.findById(postId);
+        
         if (!post) return res.status(404).json({ message: 'Post not found' });
 
         if (post.user.toString() !== req.userId) {
             return res.status(403).json({ message: 'Not authorized to delete this post' });
         }
 
-        // --- Remove local file deletion logic ---
-        /*
-        // build absolute path to file
-        const relPath = post.imageUrl.replace(/^\/+/, '');
-        const filePath = path.join(__dirname, '..', relPath);
-
-        // delete file if exists
-        try {
-            await fs.unlink(filePath);
-        } catch (err) {
-            console.warn('Failed to delete file or file not found:', filePath, err.message);
+        // --- NEW: Delete Image from Cloudinary ---
+        if (post.imageUrl) {
+            const publicId = getPublicIdFromUrl(post.imageUrl);
+            if (publicId) {
+                await cloudinary.uploader.destroy(publicId);
+                console.log(`Deleted image from Cloudinary: ${publicId}`);
+            }
         }
-        */
-        // --- End removal ---
+        // -----------------------------------------
 
-        // Optional: Delete image from Cloudinary here if needed (requires cloudinary api)
-        // Example (you'll need to install and configure cloudinary sdk properly):
-        /*
-        if (post.imageUrl && post.imageUrl.includes('cloudinary')) {
-             try {
-                 const publicId = post.imageUrl.split('/').pop().split('.')[0]; // Extract public_id
-                 await cloudinary.uploader.destroy(`social-app-posts/${publicId}`); // Adjust folder/publicId extraction as needed
-                 console.log(`Deleted from Cloudinary: ${publicId}`);
-             } catch (cldErr) {
-                 console.error("Cloudinary delete error:", cldErr);
-             }
-        }
-        */
-
-
-        // remove DB entry
         await Post.findByIdAndDelete(postId);
+        await Comment.deleteMany({ post: postId });
 
         res.json({ message: 'Post deleted' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+/* -------------------------------------------
+   NEW ROUTES FOR LIKES LIST AND COMMENTS
+------------------------------------------- */
+
+// Get list of users who liked the post
+router.get('/:id/likes', auth, async (req, res) => {
+    try {
+        const post = await Post.findById(req.params.id)
+            .populate('likes', 'firstName lastName username profilePictureUrl'); // Populate user details
+        if (!post) return res.status(404).json({ message: 'Post not found' });
+        res.json(post.likes);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Get comments for a post
+router.get('/:id/comments', auth, async (req, res) => {
+    try {
+        const comments = await Comment.find({ post: req.params.id })
+            .populate('user', 'firstName lastName username profilePictureUrl')
+            .sort({ createdAt: 1 }); // Oldest first (like chat) or -1 for Newest first
+        res.json(comments);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Add a comment
+router.post('/:id/comments', auth, async (req, res) => {
+    try {
+        const { text } = req.body;
+        if (!text || !text.trim()) return res.status(400).json({ message: 'Comment cannot be empty' });
+
+        const newComment = new Comment({
+            post: req.params.id,
+            user: req.userId,
+            text: text.trim()
+        });
+        await newComment.save();
+        
+        // Populate user details immediately to show on frontend
+        await newComment.populate('user', 'firstName lastName username profilePictureUrl');
+        
+        res.json(newComment);
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Server error' });

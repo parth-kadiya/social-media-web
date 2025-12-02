@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import Post from '../components/Post';
+import StatusRow from '../components/StatusRow';
 import '../styles/Home.css';
 
 export default function Home() {
@@ -14,6 +15,7 @@ export default function Home() {
   return (
     <div className="home-page">
       <h2 className="page-header">Home Feed</h2>
+      <StatusRow />
       {msgs.home && <div className="page-message">{msgs.home}</div>}
       
       {friendPosts.length === 0 && (

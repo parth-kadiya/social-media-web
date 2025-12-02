@@ -1,52 +1,186 @@
+/* client/src/styles/CreatePost.css */
+
 .upload-form {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 24px;
+  width: 100%;
 }
+
+/* -- New Upload Box Design -- */
 .file-drop-area {
   width: 100%;
   max-width: 500px;
-  border: 2px dashed #dbdbdb;
-  border-radius: 8px;
-  padding: 20px;
+  border: 2px dashed #ccc; /* Thoda light border */
+  background-color: #f8f9fa; /* Requirement 1: Black se Grey kar diya */
+  border-radius: 12px;
+  padding: 40px 20px;
   text-align: center;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, background-color 0.2s;
+  cursor: pointer;
+  position: relative;
 }
+
 .file-drop-area:hover {
-  border-color: #667eea;
+  border-color: #667eea; /* Sidebar theme color hover pe */
+  background-color: #f0f2f5;
 }
+
 .file-input {
   display: none;
 }
+
 .file-label {
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+/* SVG Icon Styling */
+.upload-icon-wrapper {
+  margin-bottom: 16px;
+}
+
+.upload-svg-icon {
+  font-size: 3.5rem;
+  /* Requirement 1: Sidebar Active Tab Color (#667eea) */
+  color: #667eea; 
+  filter: drop-shadow(0 2px 4px rgba(102, 126, 234, 0.3));
+}
+
+/* Text Styling */
+.upload-text {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #333; /* Dark grey text for better contrast on grey bg */
+  margin-bottom: 4px;
+}
+
+.upload-limit-text {
+  font-size: 0.9rem;
+  color: #777; /* Grey subtitle */
+}
+
+/* -- Preview Section -- */
+.preview-container {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  background-color: #fafafa;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.image-preview {
+  width: 100%;
+  height: auto; /* Aspect ratio maintain karega */
   display: block;
 }
-.image-preview {
-  max-width: 100%;
-  max-height: 400px;
-  border-radius: 8px;
-}
-.upload-placeholder {
-  padding: 40px 20px;
-  color: #8e8e8e;
-}
-.upload-placeholder p {
-  font-size: 1.1rem;
-  font-weight: 500;
-  margin: 0 0 8px 0;
-}
-.upload-button {
-  padding: 12px 24px;
-  border: none;
-  background-color: #667eea;
+
+.remove-preview-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.6);
   color: white;
+  border: none;
+  padding: 8px 12px;
   border-radius: 6px;
-  font-weight: 600;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  transition: background 0.2s;
 }
+
+.remove-preview-btn:hover {
+  background: rgba(237, 73, 86, 0.9);
+}
+
+.upload-button {
+  padding: 12px 32px;
+  border: none;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.2s, opacity 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
 .upload-button:disabled {
-  background-color: #ccc;
+  background: #ccc;
   cursor: not-allowed;
+  transform: none;
+}
+
+.upload-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.spinner {
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top: 3px solid #ffffff;
+  width: 20px;
+  height: 20px;
+  -webkit-animation: spin 1s linear infinite; /* Safari */
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* -- Cropper Modal Styles -- */
+.cropper-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.cropper-container {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+}
+
+.cropper-container h3 {
+  margin: 0 0 10px 0;
+  color: #333;
+}
+.crop-instruction {
+  margin-bottom: 15px;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.cropper-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 20px;
+  width: 100%;
+  justify-content: center;
 }
